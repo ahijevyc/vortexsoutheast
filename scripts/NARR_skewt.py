@@ -40,7 +40,8 @@ def main():
 
     logging.debug(args)
 
-    df = pd.read_csv(ifile, names=["itime","station"], parse_dates=["itime"])
+    df = pd.read_csv(ifile, names=["itime","place","station"], parse_dates=["itime"])
+    assert set(df["place"].unique()) == set(["upshr","dnshr"]), "expected 2 places: upshr and dnshr"
 
     odf = pd.DataFrame()
 
@@ -75,6 +76,7 @@ def main():
                 Td = obs["dewpoint"]
                 u = obs["u_wind"].to(plot_barbs_units)
                 v = obs["v_wind"].to(plot_barbs_units)
+                obs["psfc"] = p.max()
                 lon, lat  = slon, slat
                 for sigp in sigps:
                     T0,Td0 = np.nan,np.nan
@@ -106,19 +108,22 @@ def main():
                     Td0 = Td.sel(dict(lv_ISBL0=sigp))
                     od[f"{sigp:.0f} temp"] = T0.data
                     od[f"{sigp:.0f} thetae"] = mpcalc.equivalent_potential_temperature(sigp, T0, Td0).data.to("degC")
-                od["narr sbcape"]   = narr.scalardata('sbcape', itime).isel(imin).data
-                od["narr sbcinh"]   = narr.scalardata('sbcinh', itime).isel(imin).data
-                od["narr mlcape"]   = narr.scalardata('mlcape', itime).isel(imin).data
-                od["narr mlcinh"]   = narr.scalardata('mlcinh', itime).isel(imin).data
-                od["narr 0degC rh"] = narr.scalardata('rh_0deg', itime).isel(imin).data
-                od["narr pwat"]     = narr.scalardata('pwat', itime).isel(imin).data
+                od["narr sbcape"]    = narr.scalardata('sbcape', itime).isel(imin).data
+                od["narr sbcinh"]    = narr.scalardata('sbcinh', itime).isel(imin).data
+                od["narr mlcape"]    = narr.scalardata('mlcape', itime).isel(imin).data
+                od["narr mlcinh"]    = narr.scalardata('mlcinh', itime).isel(imin).data
+                od["narr 0degC rh"]  = narr.scalardata('rh_0deg', itime).isel(imin).data
+                od["narr pwat"]      = narr.scalardata('pwat', itime).isel(imin).data
+                od["psfc"]           = narr.scalardata('psfc', itime).isel(imin).data
+                od["narr shr10_900"] = narr.scalardata('shr10_900', itime).isel(imin).data.compute()
+                od["narr shr10_700"] = narr.scalardata('shr10_700', itime).isel(imin).data.compute()
 
             skew.plot(p, T, 'r')
             skew.plot(p, Td, 'g')
 
             skew.ax.set_ylim(1050, pmin)
             skew.ax.set_xlim(-25, 55)
-            logging.debug("Calculate LCL height and plot as black dot.")
+            logging.debug("Calculate LCL and label with line.")
             lcl_pressure, lcl_temperature = mpcalc.lcl(p[0], T[0], Td[0])
             logging.debug(f"lcl_pressure {lcl_pressure} lcl_temperature {lcl_temperature}")
 
@@ -169,8 +174,10 @@ def main():
             storm_u, storm_v = wind_mean
             srh03_pos, srh03_neg, srh03_tot = mpcalc.storm_relative_helicity(height, u, v, 3 * units.km, storm_u=storm_u, storm_v=storm_v)
             srh01_pos, srh01_neg, srh01_tot = mpcalc.storm_relative_helicity(height, u, v, 1 * units.km, storm_u=storm_u, storm_v=storm_v)
-          
+         
+
             od["time"] = itime
+            od["place"] = row.place
             od["station"] = station
             od["sounding type"] = stype
             od["station lon"] = slon
@@ -181,15 +188,16 @@ def main():
             od["lowest level dwpt"] = Td[0]
             od["lowest level theta"] = mpcalc.potential_temperature(p[0], T[0])
             od["lowest level thetae"] = mpcalc.equivalent_potential_temperature(p[0], T[0], Td[0])
-            od["sfc parcel plcl"] = lcl_pressure
+            od["sfc parcel plcl AGL"] = od["psfc"] - lcl_pressure
             od["sfc parcel tlcl"] = lcl_temperature
             od["sfc parcel mixing ratio"] = mixing_ratio_parcel
             od["metpy sfcape"] = sfcape
             od["metpy sfcin"] = sfcin
             od["storm_u"] = storm_u
             od["storm_v"] = storm_v
-            od["sfc-5km shr mag"] = mpcalc.wind_speed(*mpcalc.bulk_shear(p, u, v, height, bottom=height[0], depth=5*units.km))
-            od["sfc-3km shr mag"] = mpcalc.wind_speed(*mpcalc.bulk_shear(p, u, v, height, bottom=height[0], depth=3*units.km))
+            od["sfc-5km shr mag"] = mpcalc.wind_speed(*mpcalc.bulk_shear(p, u, v, height, bottom=height.min(), depth=5*units.km))
+            od["sfc-3km shr mag"] = mpcalc.wind_speed(*mpcalc.bulk_shear(p, u, v, height, bottom=height.min(), depth=3*units.km))
+            od["sfc-1km shr mag"] = mpcalc.wind_speed(*mpcalc.bulk_shear(p, u, v, height, bottom=height.min(), depth=1*units.km))
             od["metpy srh03+"] = srh03_pos
             od["metpy srh03-"] = srh03_neg
             od["metpy srh03"] = srh03_tot
@@ -265,9 +273,9 @@ def move_units_from_values_to_column_names(df):
     rdict = {}
     for col in df.columns:
         values = df[col].values
-        if type(values[0]) == type(units.K*1):
+        if hasattr(values[0], 'units'):
             us = [x.units for x in values]
-            df[col] = [x.m for x in df[col].values]
+            df[col] = [x.m for x in values]
             assert len(set(us)) == 1 # make sure units are all the same
             rdict[col] = f"{col} [{us[0]:~}]"
     df = df.rename(columns=rdict)
