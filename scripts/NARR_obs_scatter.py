@@ -44,6 +44,8 @@ def main():
 
 
     if varx not in df.columns or vary not in df.columns:
+        if varx not in df.columns: logging.error(f"{varx} not available")
+        if vary not in df.columns: logging.error(f"{vary} not available")
         logging.error(f"choices {df.columns}")
         sys.exit(1)
 
@@ -54,7 +56,7 @@ def main():
         if label:
             labels = d.loc[d["sounding type"] == "NARR", ["time","station"]]
             labels = [f"{time.strftime('%Y-%m-%d')}\n{station}" for time,station in labels.values] 
-            for x,y,s in zip(obs.m,narr.m,labels):
+            for x,y,s in zip(obs,narr,labels):
                 ax.text(x,y,s,fontsize="xx-small", ha="center", va="center_baseline")
 
         base, ext = os.path.splitext(slist)
