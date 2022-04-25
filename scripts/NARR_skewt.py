@@ -76,13 +76,15 @@ def main():
                 Td = obs["dewpoint"]
                 u = obs["u_wind"].to(plot_barbs_units)
                 v = obs["v_wind"].to(plot_barbs_units)
-                obs["psfc"] = p.max()
+                od["psfc"] = p.max()
+                od["lcl_pressure"], _ = mpcalc.lcl(p[0], T[0], Td[0])
+                od["pwat"] = mpcalc.precipitable_water(p,Td)
                 lon, lat  = slon, slat
                 for sigp in sigps:
                     T0,Td0 = np.nan,np.nan
                     if p.max() >= sigp and p.min() <= sigp: 
-                        z, T0, Td0 = interpolate_1d(sigp, p, height, T, Td) # z comes out as array without comma here
-                        skew.ax.text(0.01,sigp,f"{z:~.0f}", fontsize='small', transform=trans, ha="left", va="center")
+                        z, T0, Td0 = interpolate_1d(sigp, p, height, T, Td)
+                        skew.ax.text(0.01,sigp,f"{z[0]:~.0f}", fontsize='small', transform=trans, ha="left", va="center")
                         od[f"{sigp:.0f} temp"] = T0[0]
                         od[f"{sigp:.0f} thetae"] = mpcalc.equivalent_potential_temperature(sigp, T0, Td0).to("degC")[0]
             else:
@@ -113,8 +115,11 @@ def main():
                 od["narr mlcape"]    = narr.scalardata('mlcape', itime).isel(imin).data
                 od["narr mlcinh"]    = narr.scalardata('mlcinh', itime).isel(imin).data
                 od["narr 0degC rh"]  = narr.scalardata('rh_0deg', itime).isel(imin).data
-                od["narr pwat"]      = narr.scalardata('pwat', itime).isel(imin).data
+                od["lcl_pressure"]   = narr.scalardata('lcl', itime).isel(imin).data
                 od["psfc"]           = narr.scalardata('psfc', itime).isel(imin).data
+                od["pwat"]           = narr.scalardata('pwat', itime).isel(imin).data
+                od["pwat"]           = od["pwat"] * units.m**3 / (1000*units.kg)
+                od["pwat"]           = od["pwat"].to("mm")
                 od["narr shr10_900"] = narr.scalardata('shr10_900', itime).isel(imin).data.compute()
                 od["narr shr10_700"] = narr.scalardata('shr10_700', itime).isel(imin).data.compute()
 
@@ -123,9 +128,6 @@ def main():
 
             skew.ax.set_ylim(1050, pmin)
             skew.ax.set_xlim(-25, 55)
-            logging.debug("Calculate LCL and label with line.")
-            lcl_pressure, lcl_temperature = mpcalc.lcl(p[0], T[0], Td[0])
-            logging.debug(f"lcl_pressure {lcl_pressure} lcl_temperature {lcl_temperature}")
 
             logging.debug("Calculate full parcel profile and add to plot as black line")
 
@@ -153,7 +155,7 @@ def main():
             parcel_level = 0 if stype == "obs" else 0
             mixing_ratio_parcel = mpcalc.mixing_ratio_from_relative_humidity(p[parcel_level], T[parcel_level], relative_humidity[parcel_level])
             prof_mixing_ratio = mpcalc.mixing_ratio_from_relative_humidity(p, profT, 1) # saturated mixing ratio
-            prof_mixing_ratio[p >= lcl_pressure] = mixing_ratio_parcel # unsaturated mixing ratio (constant up to LCL)
+            prof_mixing_ratio[p >= od["lcl_pressure"]] = mixing_ratio_parcel # unsaturated mixing ratio (constant up to LCL)
             profTv = mpcalc.virtual_temperature(profT, prof_mixing_ratio)
 
             logging.debug("environment virtual temperature")
@@ -164,8 +166,8 @@ def main():
                 mixing_ratio[cold_and_probably_dry] = 0
             Tv = mpcalc.virtual_temperature(T, mixing_ratio)
             skew.plot(p, Tv, 'r', linewidth=0.5, linestyle="dashed")
-            skew.ax.plot([0.86,0.88], 2*[lcl_pressure.m], transform=trans)
-            skew.ax.text(0.885,lcl_pressure,"sfc LCL", transform=trans, ha="left", va="center")
+            skew.ax.plot([0.86,0.88], 2*[od["lcl_pressure"].m], transform=trans)
+            skew.ax.text(0.885,od["lcl_pressure"],"sfc LCL", transform=trans, ha="left", va="center")
 
             sfcape, sfcin = mpcalc.cape_cin(p,Tv,Td,profTv)
             storm_u = 0. * units("m/s")
@@ -188,9 +190,8 @@ def main():
             od["lowest level dwpt"] = Td[0]
             od["lowest level theta"] = mpcalc.potential_temperature(p[0], T[0])
             od["lowest level thetae"] = mpcalc.equivalent_potential_temperature(p[0], T[0], Td[0])
-            od["sfc parcel plcl AGL"] = od["psfc"] - lcl_pressure
-            od["sfc parcel tlcl"] = lcl_temperature
             od["sfc parcel mixing ratio"] = mixing_ratio_parcel
+            od["sfc parcel lcl pressure AGL"] = od["psfc"] - od["lcl_pressure"]
             od["metpy sfcape"] = sfcape
             od["metpy sfcin"] = sfcin
             od["storm_u"] = storm_u
@@ -204,7 +205,6 @@ def main():
             od["metpy srh01+"] = srh01_pos
             od["metpy srh01-"] = srh01_neg
             od["metpy srh01"] = srh01_tot
-            od["metpy pwat"] = mpcalc.precipitable_water(p,Td)
             #mlcape,mlcin = mpcalc.mixed_layer_cape_cin(p,Tv,Td,height=height,depth=30*units.hPa) # not sure how metpy deals with Tv. 
             #od["metpy mlcape"] = mlcape
             #od["metpy mlcin"] = mlcin
@@ -276,7 +276,7 @@ def move_units_from_values_to_column_names(df):
         if hasattr(values[0], 'units'):
             us = [x.units for x in values]
             df[col] = [x.m for x in values]
-            assert len(set(us)) == 1 # make sure units are all the same
+            assert len(set(us)) == 1, f"units of {col} not all the same"
             rdict[col] = f"{col} [{us[0]:~}]"
     df = df.rename(columns=rdict)
     return df
