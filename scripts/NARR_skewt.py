@@ -276,7 +276,7 @@ def move_units_from_values_to_column_names(df):
         if hasattr(values[0], 'units'):
             us = [x.units for x in values]
             df[col] = [x.m for x in values]
-            assert len(set(us)) == 1, f"units of {col} not all the same"
+            assert len(set(us)) == 1, f"units of {col} not all the same {set(us)}"
             rdict[col] = f"{col} [{us[0]:~}]"
     df = df.rename(columns=rdict)
     return df
