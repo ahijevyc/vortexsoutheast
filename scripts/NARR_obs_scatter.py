@@ -2,6 +2,7 @@ import argparse
 import datetime
 import logging
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 from metpy.interpolate import interpolate_1d
 from metpy.units import units, pandas_dataframe_to_unit_arrays
 import metpy.calc as mpcalc
@@ -49,36 +50,35 @@ def main():
         logging.error(f"choices {df.columns}")
         sys.exit(1)
 
-    fig, ax = plt.subplots()
-    for slist,d in df.groupby("sounding list"):
-        obs  = d.loc[d["sounding type"] == "obs", varx].values
-        narr = d.loc[d["sounding type"] == "NARR", vary].values
-        if label:
-            labels = d.loc[d["sounding type"] == "NARR", ["time","station"]]
-            labels = [f"{time.strftime('%Y-%m-%d')}\n{station}" for time,station in labels.values] 
-            for x,y,s in zip(obs,narr,labels):
-                ax.text(x,y,s,fontsize="xx-small", ha="center", va="center_baseline")
+    # remove dirname and extension from sounding list column.
+    df["sounding list"] = [os.path.basename(os.path.splitext(slist)[0]).replace(".","\n") for slist in df["sounding list"]]
 
-        base, ext = os.path.splitext(slist)
-        sounding_list_label = os.path.basename(base)
-        sns.scatterplot(x=obs, y=narr, label=sounding_list_label, ax=ax) 
-
-    ax.set_xlabel(f"obs {varx}")
-    ax.set_ylabel(f"NARR {vary}")
+    # This is kind of kludgy, but better than before
+    obs  = df[df["sounding type"] == "obs"].reset_index()
+    narr = df[df["sounding type"] == "NARR"].reset_index()
+    obs[vary] = narr[vary] # Replace vary in obs with vary in narr
+    # Then plot obs
+    ax = sns.scatterplot(data=obs, x=varx, y=vary, hue="place", style="sounding list")
+    plt.setp(ax.get_legend().get_texts(), fontsize='6') # for legend text
+    plt.setp(ax.get_legend().get_title(), fontsize='8') # for legend title
    
     ax.plot(ax.get_xlim(),ax.get_xlim(), color="red", linewidth=0.5)
     ax.set_aspect('equal')
 
+    if label:
+        labels = obs[["time","station"]]
+        labels = [f"{time.strftime('%Y-%m-%d')}\n{station}" for time,station in labels.values] 
+        for x,y,s in zip(obs[varx],obs[vary],labels):
+            ax.text(x,y,s,fontsize="xx-small", ha="center", va="center_baseline")
 
     text = f"created {datetime.datetime.now()}"
-    text += "\ninput files " + "\n".join(ifiles)
     fineprint = plt.annotate(text=text, xy=(2,1), xycoords=('figure pixels','figure pixels'), va="bottom", fontsize=6)
     if no_fineprint: fineprint.set_visible(False)
 
     odir = "/glade/scratch/ahijevyc/trier/VSE"
     ofile = os.path.join(odir, f"t.scatter.png")
     plt.tight_layout()
-    plt.savefig(ofile)
+    plt.savefig(ofile,dpi=175)
     logging.info(f"made {os.path.realpath(ofile)}")
 
 
