@@ -115,18 +115,16 @@ def fill_NaNs_with_neighbors2d(array2d):
     return array2d
 
 
-def add_rgrid(ax):
+def add_rgrid(ax, ring_interval=200):
     ax.grid(alpha=0.5, linewidth=0.5) # tried moving outside loop right after figure was created but grid was not visible (even with zorder=3)
     ax.tick_params(labelsize='xx-small', pad=0)
     #ax.yaxis.set_units('km') # Not sure if this helps anything. Certainly not when axis is normalized.
-    radii = np.linspace(start=0, stop=ax.get_ylim()[1], num=6)
-    rlabels = [f"{x:.0f}" for x in radii]
-    rlabels[0] = "" # no "0" at origin 
-    rlabels[1] = ""  # tried list range of 1:-1, but it removed elements
-    rlabels[2] = "" 
-    rlabels[3] = "" 
-    rlabels[4] = "" 
-    rlabels[-1] += " km" # add to last label
+    start, stop = ax.get_ylim()
+    radii = np.arange(start,stop+ring_interval,ring_interval)
+    rlabels = [f"{x:.0f}km" for x in radii]
+    for i in range(len(rlabels)-1):
+        rlabels[i] = ""
+    logging.debug(f"add_rgrid: ring_interval={ring_interval} start={start}, stop={stop} radii={radii} {rlabels}")
     lines, labels = ax.set_rgrids(radii, labels=rlabels, angle=0, ha='center',va="baseline", fontsize=4.5)
     return lines, labels
     
@@ -155,7 +153,7 @@ parser.add_argument("-e", "--extent", type=float, nargs=4, help="debug plot exte
 parser.add_argument("-f", "--fill", type=str, default= 'shr10_700', help='variable name for contour fill field')
 parser.add_argument("--hail", action='store_true', help="overlay hail reports")
 parser.add_argument("-l", "--line", type=str, default=None, help='variable name for line contour field')
-parser.add_argument("--max_range", type=float, default=1000., help="maximum range in km, or, if normalize_by is set, units of normalize_by.")
+parser.add_argument("--max_range", type=float, default=800., help="maximum range in km, or, if normalize_by is set, units of normalize_by.")
 parser.add_argument("--netcdf", type=str, default=None, help="netCDF file to write composite to")
 parser.add_argument("--no-fineprint", action='store_true', help="Don't write details at bottom of image")
 parser.add_argument("--normalize_by", type=str, choices=["rmw","r34","Vt500km"], default=None, help="normalize range from TC center by this scale")
@@ -247,7 +245,7 @@ if normalize_by:
         max_range = 10.
 pbot = 850*units("hPa") # for wind shear coordinate
 ptop = 200*units("hPa")
-fineprint_string = f"daz: {daz}$\degree$   dr: {dr}{dr_units}   layer for wind shear coordinate:{pbot}-{ptop}"
+fineprint_string = f"daz: {daz}$\degree$   dr: {dr}{dr_units}   layer for wind shear coordinate:{ptop:~}-{pbot:~}"
 fineprint_string += "\nstorm and time(s) text file: " + os.path.realpath(stormlist.name)
 azbins = np.arange(0,360+daz,daz)
 theta_lines = range(0,360,45)
@@ -265,7 +263,7 @@ range_center1D, theta_center1D = dr/2+rbins[:-1], daz/2+azbins[:-1]
 polar_sz = (len(azbins)-1, len(rbins)-1)
 
 #---Locate gridded wind barbs on polar plot
-dx = 120 # wind barb grid spacing
+dx = 100 # wind barb grid spacing
 mg = np.arange(-max_range, max_range+dx, dx)
 x0, y0 = np.meshgrid(mg, mg)
 r_center2D, theta_center2D = np.meshgrid(range_center1D, theta_center1D)
@@ -307,7 +305,7 @@ cbar_ax = figplr.add_axes([0.05, 0.32, 0.49, 0.015])
 fineprint = plt.annotate(text="", xy=(4,1), xycoords=('figure pixels','figure pixels'), va="bottom", fontsize=3.2)
 
 
-print(f"stormlist {stormlist.name}")
+logging.info(f"stormlist {stormlist.name}")
 for storm in stormlist:
     words = storm.split()
     stormname = words[0]
@@ -324,7 +322,7 @@ for storm in stormlist:
         df = atcf.interpolate(df, '3H', debug=debug) # NARR is every 3 hours; NHC best track is usually every 6.
     if useIBTrACS:
         # Use IBTrACS
-        df, best_track_file = ibtracs.get_atcf(stormname, year, basin="NA", debug=debug) # North Atlantic basin guaranteed for NARR
+        df, best_track_file = ibtracs.get_atcf(stormname, year, basin="NA") # North Atlantic basin guaranteed for NARR
         extension = ibtracs.extension(stormname, year)
         df = df.append(extension, sort=False, ignore_index=True)
         # Considered interpolating to 3H but IBTrACS already has data every 3H for most storms.
@@ -333,7 +331,7 @@ for storm in stormlist:
     # ignore 50 and 64 knot rad lines. Keep 0 and 34-knot lines.Yes, there are 0-knot lines. rad is a string 
     df = df[df.rad.astype("float") <= 35] # Gabrielle 2001 atcf bal082001.dat has "35" knot winds, not 34. As a quick-fix, just use 35 as the comparison number.
     stormname_years.append(stormname_year) # used for composite title
-    print("storm", stormname_year, df.valid_time.min(), "to", df.valid_time.max())
+    logging.info(f"storm {stormname_year} {df.valid_time.min()} to {df.valid_time.max()}")
     
 
     # Make sure all times in time list are within the TC track time window.
@@ -346,7 +344,7 @@ for storm in stormlist:
 
     all_storm_reports = pd.DataFrame()
     if torn or wind or hail:
-        all_storm_reports = spc.get_storm_reports(start=min(timelist)-spc_td, end=max(timelist)+spc_td, debug=debug)
+        all_storm_reports = spc.get_storm_reports(start=min(timelist)-spc_td, end=max(timelist)+spc_td)
 
     if not hail:
         all_storm_reports = all_storm_reports[all_storm_reports["event_type"] != "hail"]
@@ -401,7 +399,7 @@ for storm in stormlist:
         if storm_reports.empty:
             storm_report_time_window_str = "no "+storm_report_time_window_str
 
-        data = narr.scalardata(fill, valid_time, targetdir=workdir, debug=debug)
+        data = narr.scalardata(fill, valid_time, targetdir=workdir)
         levels = data.attrs['levels']
         best_track_files.append(best_track_file)
         narr_files.append(data.attrs['ifile'])
@@ -412,15 +410,15 @@ for storm in stormlist:
         cmap = data.attrs['cmap']
         cmap.set_under(color='white')
         if line:
-            linecontourdata = narr.scalardata(line, valid_time, targetdir=workdir, debug=debug)
+            linecontourdata = narr.scalardata(line, valid_time, targetdir=workdir)
             # Add line contour description above color bar title
             cbar_title += "\nline: " + desc(linecontourdata)
         if barb:
-            barbdata = narr.vectordata(barb, valid_time, targetdir=workdir, debug=debug)
+            barbdata = narr.vectordata(barb, valid_time, targetdir=workdir)
             barbdata = barbdata.metpy.convert_units(barbunits)
             cbar_title += f"\nbarbs: {barb_increments} " + desc(barbdata) 
         if quiver:
-            quiverdata = narr.vectordata(quiver, valid_time, targetdir=workdir, debug=debug)
+            quiverdata = narr.vectordata(quiver, valid_time, targetdir=workdir)
             cbar_title += f"\nquiver: " + desc(quiverdata) 
 
 
@@ -430,7 +428,7 @@ for storm in stormlist:
         lon, lat = data.metpy.longitude.load(), data.metpy.latitude.load()
         dist_from_center, bearing = atcf.dist_bearing(lon1, lat1, lon, lat)
         if dist_from_center.min() > 32*units.km:
-            print("at",valid_time,stormname_year,"storm more than",dist_from_center.min(),"km from nearest NARR grid point")
+            logging.error(f"at {valid_time} {stormname_year} more than {dist_from_center.min()} from nearest NARR grid point")
             sys.exit(1)
 
         if cart or debug:
