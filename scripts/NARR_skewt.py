@@ -117,11 +117,12 @@ def main():
                 od["narr 0degC rh"]  = narr.scalardata('rh_0deg', itime).isel(imin).data
                 od["lcl_pressure"]   = narr.scalardata('lcl', itime).isel(imin).data
                 od["psfc"]           = narr.scalardata('psfc', itime).isel(imin).data
-                od["pwat"]           = narr.scalardata('pwat', itime).isel(imin).data
-                od["pwat"]           = od["pwat"] * units.m**3 / (1000*units.kg)
+                od["pwat"]           = narr.scalardata('pwat', itime).isel(imin).data * units.m**3 / (1000*units.kg)
                 od["pwat"]           = od["pwat"].to("mm")
-                od["narr shr10_900"] = narr.scalardata('shr10_900', itime).isel(imin).data.compute()
-                od["narr shr10_700"] = narr.scalardata('shr10_700', itime).isel(imin).data.compute()
+                od["narr shr10m_900hPa"] = narr.scalardata('shr10m_900hPa', itime).isel(imin).data.compute()
+                od["narr shr10m_700hPa"] = narr.scalardata('shr10m_700hPa', itime).isel(imin).data.compute()
+                od["narr shr10m_1000m"] = narr.scalardata('shr10m_1000m', itime).isel(imin).data.compute()
+                od["narr shr10m_3000m"] = narr.scalardata('shr10m_3000m', itime).isel(imin).data.compute()
 
             skew.plot(p, T, 'r')
             skew.plot(p, Td, 'g')
@@ -129,7 +130,7 @@ def main():
             skew.ax.set_ylim(1050, pmin)
             skew.ax.set_xlim(-25, 55)
 
-            logging.debug("Calculate full parcel profile and add to plot as black line")
+            logging.debug("Calculate full parcel profile and plot as black line")
 
             p_without_lcl = p # remember so we can interpolate u,v,height too later
             logging.debug("Get parcel temperature at all pressures, including lcl. Return new p, T, and Td with lcl included.")
@@ -263,8 +264,9 @@ def main():
             odf = odf.append(od, ignore_index=True)
     logging.info(f"move units from values to column names")
     odf = move_units_from_values_to_column_names(odf)
-    ocsv, ext = os.path.splitext(ifile)
-    ocsv += ".data.csv"
+    odir = os.path.join(os.path.dirname(ifile), "../data")  # output to parent directory under data/.
+    path, ext = os.path.splitext(os.path.basename(ifile))
+    ocsv = os.path.join(odir, path+".data.csv")
     odf.set_index(["time","station","sounding type"]).to_csv(ocsv)
     logging.info(f"made {ocsv}")
 
@@ -275,8 +277,9 @@ def move_units_from_values_to_column_names(df):
         values = df[col].values
         if hasattr(values[0], 'units'):
             us = [x.units for x in values]
-            df[col] = [x.m for x in values]
             assert len(set(us)) == 1, f"units of {col} not all the same {set(us)}"
+            logging.debug(f"move {us[0]} of {col} from values to to column name")
+            df[col] = [x.m for x in values]
             rdict[col] = f"{col} [{us[0]:~}]"
     df = df.rename(columns=rdict)
     return df
