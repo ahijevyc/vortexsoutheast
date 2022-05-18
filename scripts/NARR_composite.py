@@ -150,7 +150,7 @@ parser.add_argument("--clevels", type=float, nargs='+', default= [500, 1000, 200
 parser.add_argument("--clobber", action='store_true', help="overwrite any old outfile, if it exists")
 parser.add_argument("-d", "--debug", action='store_true')
 parser.add_argument("-e", "--extent", type=float, nargs=4, help="debug plot extent lonmin, lonmax, latmin, latmax", default=[-98, -74, 20, 38])
-parser.add_argument("-f", "--fill", type=str, default= 'shr10_700', help='variable name for contour fill field')
+parser.add_argument("-f", "--fill", type=str, default= 'shr10m_700hPa', help='variable name for contour fill field')
 parser.add_argument("--hail", action='store_true', help="overlay hail reports")
 parser.add_argument("-l", "--line", type=str, default=None, help='variable name for line contour field')
 parser.add_argument("--max_range", type=float, default=800., help="maximum range in km, or, if normalize_by is set, units of normalize_by.")
@@ -161,7 +161,7 @@ parser.add_argument("--no-torn", action='store_false', help="don't overlay torna
 parser.add_argument("-o", "--ofile", type=str, help="name of final composite image")
 parser.add_argument("-q", "--quiver", type=str, default= None, help='variable name for quiver field')
 parser.add_argument("--spctd", type=float, default=1.5, help="hours on either side of valid time to show SPC storm reports")
-parser.add_argument("stormlist", type=argparse.FileType('r'), help="text file. each line starts with an atcf filename, followed by a list of yyyymmddhh times")
+parser.add_argument("ifiles", nargs="+", type=argparse.FileType('r'), help="text file(s). each line starts with an atcf filename, followed by a list of yyyymmddhh times")
 parser.add_argument("--torn", action='store_true', help="overlay tornado reports")
 parser.set_defaults(torn=True)
 parser.add_argument("--wind", action='store_true', help="overlay wind reports")
@@ -185,7 +185,7 @@ no_fineprint   = args.no_fineprint
 normalize_by   = args.normalize_by
 quiver         = args.quiver
 spc_td         = datetime.timedelta(hours=args.spctd)
-stormlist      = args.stormlist
+ifiles         = args.ifiles
 torn           = args.torn
 wind           = args.wind
 workdir        = args.workdir
@@ -246,7 +246,7 @@ if normalize_by:
 pbot = 850*units("hPa") # for wind shear coordinate
 ptop = 200*units("hPa")
 fineprint_string = f"daz: {daz}$\degree$   dr: {dr}{dr_units}   layer for wind shear coordinate:{ptop:~}-{pbot:~}"
-fineprint_string += "\nstorm and time(s) text file: " + os.path.realpath(stormlist.name)
+fineprint_string += "\nstorm and time(s) text file(s): " + " ".join([os.path.realpath(x.name) for x in ifiles])
 azbins = np.arange(0,360+daz,daz)
 theta_lines = range(0,360,45)
 storm_rpt_legend_kw = dict(fontsize=4.8, bbox_to_anchor=(0.8, -0.01), loc='upper left', borderaxespad=0, frameon=False, title_fontsize='xx-small')
@@ -302,10 +302,13 @@ for ax in axes:
 blankax.set_visible(False)
 cbar_ax = figplr.add_axes([0.05, 0.32, 0.49, 0.015])
 # Empty fineprint_string placeholder for fine print in lower left corner of image.
-fineprint = plt.annotate(text="", xy=(4,1), xycoords=('figure pixels','figure pixels'), va="bottom", fontsize=3.2)
+fineprint = plt.annotate(text="", xy=(4,1), xycoords=('figure pixels','figure pixels'), va="bottom", fontsize=3.2, wrap=True)
 
 
-logging.info(f"stormlist {stormlist.name}")
+logging.info(f"ifiles {ifiles}")
+stormlist = []
+for ifile in ifiles:
+    stormlist.extend(ifile.readlines())
 for storm in stormlist:
     words = storm.split()
     stormname = words[0]
@@ -716,7 +719,7 @@ if netcdf:
     ds['azimuth'].attrs = {"units":"degrees","long_name":"degrees clockwise from north"}
     ds.attrs['daz'] = daz
     ds.attrs['dr'] = dr
-    ds.attrs['stormlist text file'] = os.path.realpath(stormlist.name)
+    ds.attrs['ifiles'] = [os.path.realpath(ifile.name) for ifile in ifiles]
     ds["time"].values = ds.time.astype(np.datetime64)
     ds["time"].encoding['units'] = "hours since 1970-01-01"
     ds.to_netcdf(netcdf)
