@@ -17,7 +17,7 @@ set normalize_str=""
 #set normalize_str="--normalize_by Vt500km"
 
 # Hours in time window
-set time_window_hours=6
+set time_window_hours=12
 set extra_time_window_hours=`expr $time_window_hours - 3`
 
 
@@ -33,9 +33,9 @@ end
 # You don't need to change --ofile and --netcdf arguments yourself. 
 
 
-#foreach fillbarb (div250/wind250 div925/wind925 mslp/wind10m mlcape/wind10m mlcinh/wind10m pwat/wind10m rh925/wind925 rh850/wind850 rh700/wind700 rh500/wind500 rh_0deg/wind500 shr10m_500hPa/shr10m_500hPa shr10m_700hPa/shr10m_700hPa shr10m_900hPa/shr10m_900hPa speed10m/wind10m speed700/wind700 speed500/wind500 sh2/wind10m srh stp theta2/wind10m thetae2/wind10m thetasfc/wind10m vort250/wind250 vort925/wind925 vvel700/wind700 vvel850/wind850 speed10m/shr10m_700hPa tctp/shr10m_3000m tctp/shr10m_1000m scp/shr10m_700hPa scp/shr10m_900hPa shr10m_900hPa/shr10m_900hPa shr10m_700hPa/shr10m_700hPa) # torn symbols in magenta?
-foreach fillbarb (tctp2014/shr10m_3000m tctp/shr10m_3000m tctp/shr10m_1000m)
-#foreach fillbarb (vvel700/wind700) # torn symbols in yellow
+foreach fillbarb (div250hPa/wind250hPa div925hPa/wind925hPa mslp/wind10m mlcape/wind10m mlcinh/wind10m pwat/wind10m rh925hPa/wind925hPa rh850hPa/wind850hPa rh700hPa/wind700hPa rh500hPa/wind500hPa rh_0deg/wind500hPa shr10m_500hPa/shr10m_500hPa shr10m_700hPa/shr10m_700hPa shr10m_900hPa/shr10m_900hPa speed10m/wind10m speed700hPa/wind700hPa speed500hPa/wind500hPa sh2/wind10m srh stp theta2/wind10m thetae2/wind10m thetasfc/wind10m vort250hPa/wind250hPa vort925hPa/wind925hPa vvel700hPa/wind700hPa vvel850hPa/wind850hPa speed10m/shr10m_700hPa tctp2014/shr10m_3000m tctp/shr10m_3000m tctp/shr10m_1000m scp/shr10m_700hPa scp/shr10m_900hPa shr10m_900hPa/shr10m_900hPa shr10m_700hPa/shr10m_700hPa) # torn symbols in magenta?
+#foreach fillbarb (tctp2014/shr10m_3000m tctp/shr10m_3000m tctp/shr10m_1000m)
+#foreach fillbarb (vvel700hPa/wind700hPa) # torn symbols in yellow
 #foreach fillbarb (speed10m/shr10m_700hPa tctp/shr10m_700hPa tctp/shr10m_900hPa scp/shr10m_700hPa scp/shr10m_900hPa shr10m_900hPa/shr10m_900hPa shr10m_700hPa/shr10m_700hPa) # torn symbols in magenta?
 #foreach fillbarb (`cat $CM1`)
 #foreach fillbarb (mlcinh/wind10m mlcape/wind10m srh/shr10m_700hPa) # need mlcape for NARR_composite_skewt.py
@@ -48,9 +48,11 @@ foreach fillbarb (tctp2014/shr10m_3000m tctp/shr10m_3000m tctp/shr10m_1000m)
     set lineargs=""
     set line=""
     # line contour argumements, and add line to output file name
-    if ($fill =~ shr10m_* | $fill =~ vvel700) then
-        set line="sbcape."
-        set lineargs="--line sbcape --clev 500 1000 2000" 
+    if ($fill =~ shr10m_* | $fill =~ vvel700*) then
+        #set line="sbcape."
+        #set lineargs="--line sbcape --clev 500 1000 2000" 
+        set line="shr10m_700hPa."
+        set lineargs="--line shr10m_700hPa --clev 8 12 16 20" 
     endif
     if ($fill == "scp" | $fill == "tctp") then
         set line="srh."
@@ -73,16 +75,16 @@ foreach fillbarb (tctp2014/shr10m_3000m tctp/shr10m_3000m tctp/shr10m_1000m)
         # could be any date yyyymmdd
         set hh=""
         foreach n (`seq 0 3 $extra_time_window_hours`)
-            set hh=$hh`date -u --date "20080601 ${h}hours +${n}hours" +%H`
+            set hh=$hh`date -u --date "20080601 ${h}hours +${n}hours" +%H` # nothing special about 20080601; could be any date
         end
         set batch=$TMPDIR/$fill.$line$barb$hh.pbs
 
         cat<<END>$batch
 #!/bin/csh
 #PBS -A NMMM0021
-#PBS -N $fill$hh
-#PBS -e $TMPDIR/$fill.$hh.err
-#PBS -o $TMPDIR/$fill.$hh.out
+#PBS -N $fill$hh$line
+#PBS -e $TMPDIR/$fill.$line$hh.err
+#PBS -o $TMPDIR/$fill.$line$hh.out
 #PBS -q casper
 #PBS -l walltime=06:00:00
 #PBS -l select=1:ncpus=1:mem=4GB
@@ -91,18 +93,18 @@ setenv TMPDIR /glade/scratch/$USER/temp
 mkdir -p $TMPDIR
 
 module reset
-module load python
-ncar_pylib 20201220_casper
+module load conda
 module load ncl
+conda activate npl
 END
 
 
         # These are the "days-to-subtract" to accomodate different starting hours. Subtracting a whole number of days does not change the hour UTC.
-        set start_at_00z=`echo "$h/24"|bc` 
+        set start_at_00z=`echo "($h+0)/24"|bc` 
         set start_at_03z=`echo "($h+21)/24"|bc`
         set start_at_06z=`echo "($h+18)/24"|bc`
         set start_at_09z=`echo "($h+15)/24"|bc`
-        set start_at_12z=0
+        set start_at_12z=`echo "($h+12)/24"|bc`
         set start_at_15z=`echo "($h+9)/24"|bc`
         set start_at_18z=`echo "($h+6)/24"|bc`
         set start_at_21z=`echo "($h+3)/24"|bc`
