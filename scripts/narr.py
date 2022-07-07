@@ -58,7 +58,7 @@ for lev in levs:
             fieldinfo[f]['levels'] = np.arange(-27,33,6) 
             fieldinfo[f]['cmap'] = readNCLcm('BlueWhiteOrangeRed')
         if lev.units == units.hPa:
-            fieldinfo[f]['fname'] = ['U_GRD_221_ISBL','V_GRD_221_ISBL'] # changed to get vector data
+            fieldinfo[f]['fname'] = ['U_GRD_221_ISBL', 'V_GRD_221_ISBL'] # changed to get vector data
         elif lev.units == units.meters:
             fieldinfo[f]['fname'] = ['U_GRD_221_HTGL', 'V_GRD_221_HTGL']
         else:
@@ -96,6 +96,7 @@ for lev in levs:
     rh = fstr('rh',lev)
     if rh not in fieldinfo: fieldinfo[rh] = {}
     fieldinfo[rh]['levels'] = range(0,100,10)
+    fieldinfo[rh]['cmap'] = readNCLcm('CBR_drywet')
     fieldinfo[rh]['fname'] = ['TMP_221_ISBL','SPF_H_221_ISBL']
     fieldinfo[rh]['vertical'] = lev
     fieldinfo[rh]['units'] = 'percent'
@@ -155,7 +156,6 @@ fieldinfo['scp']['fname'] = ['CAPE_221_SFC','CIN_221_SFC','HLCY_221_HTGY']
 fieldinfo['sh2']    = {'levels' : [0.5,1,2,4,8,12,14,16,17,18,19,20,21,22,23,24], 'cmap':fieldinfo['td2']['cmap'], 'fname': 'SPF_H_221_HTGL', 'vertical':2*units.meters, 'units':'g/kg'}
 fieldinfo['shlev1'] = {'levels' : [0.5,1,2,4,8,12,14,16,17,18,19,20,21,22,23,24], 'cmap':fieldinfo['td2']['cmap'], 'fname': 'SPF_H_221_HYBL', 'vertical':'lowest model level', 'units':'g/kg'}
 fieldinfo['shr10m_30m']  = fieldinfo['speed10m'].copy()
-fieldinfo['shr10m_30m']['levels'] = range(0,54,3)
 #shrlev1_trop = wind shear between tropopause and lowest model level
 for bot, top in itertools.permutations(levs, 2): # create shear fieldinfo entry for every permutation of levels
     shr = f"shr{bot.m}{bot.units:~}_{top.m}{top.units:~}"
@@ -253,17 +253,6 @@ def get(valid_time, targetdir=targetdir, narrtype=narr3D, idir=idir):
         subprocess.check_call(call_args)
     return narr 
 
-def get_ll(data):
-    # TODO: maybe delete. but kept for interesting notes below
-    lon, lat = data.gridlon_221.metpy.quantify(), data.gridlat_221.metpy.quantify()
-    # lon, lat = data.metpy.longitude, data.metpy.latitude # Thought about using metpy accessor, but I was warned "x" and "y" coordinates must be 1-D not 2-D in met-1.0 and beyond.
-    # subtract 360 from positive longitudes west of dateline or else you get straight spagehetti across the plot
-    # This fix may only work for NARR grid because all the problem points are in the northwest part of the grid
-    # and the northeast has no positive longitudes. Considered warning metpy developers about this, but I think it's
-    # a problem with the original grib or the way ncl_convert2nc converts it. 
-    lon = lon.where(lon<0,lon-360*units.deg) # use xarray method instead of numpy to keep as xarray. (lat is still xarray)
-
-    return lon, lat
 
 def myunits(data, info):
     # Quantify xarray.
@@ -417,6 +406,9 @@ def hgtInterp(x, xp, fp):
     # x = target height (scalar)
     # xp = input heights (3D)
     # fp = data to interpolate to target (3D)
+
+    # If vertical dimension of variable goes from high altitude to low altitude (pressure dimension sorted in increasing order),
+    # the np.diff() function produces a column of zeros and a -1, not a bunch of zeros and a 1, as expected. Then argmax() function misses the target layer.
     vdim = xp.metpy.vertical
     xp = xp.sortby(vdim, ascending=False)
     fp = fp.sortby(vdim, ascending=False)
@@ -451,7 +443,7 @@ def multiInterp(x, xp, fp):
     # xp = vertical coordinates of data to interpolate (1D)
     # fp = data to interpolate (3D)
     xp = np.broadcast_to(xp[:,None,None],fp.shape) # broadcast 1D xp array across 2 new spatial dimensions of fp
-    assert xp.shape == fp.shape, 'narr.multiInterp(): shapes of xp and fp differ'
+    assert xp.shape == fp.shape, f'narr.multiInterp(): shapes of xp and fp differ {xp.shape} {fp.shape}'
     # xp>x is False below the vertical layer that encompasses target
     # Once xp>x turns True, the np.diff function keeps the first occurrence of True in the vertical.
     bb = np.diff(xp>x,axis=0) # 3d boolean array. True at start of vertical layer that encompasses target
@@ -481,7 +473,7 @@ def pressure_to_height(target_p, hgt3D):
     # with quantified data
     return hgt2D.metpy.quantify()
 
-def scalardata(field, valid_time, targetdir=targetdir):
+def scalardata(field: str, valid_time: datetime.datetime, targetdir: str = targetdir):
     # Get color map, levels, and netCDF variable name appropriate for requested variable (from fieldinfo module).
     info = fieldinfo[field]
 
