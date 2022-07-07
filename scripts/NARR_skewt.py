@@ -189,6 +189,7 @@ def main():
             od["lat"] = lat
             od["lowest level temp"] = T[0]
             od["lowest level dwpt"] = Td[0]
+            od["lowest level rh"] = mpcalc.relative_humidity_from_dewpoint(T[0], Td[0])
             od["lowest level theta"] = mpcalc.potential_temperature(p[0], T[0])
             od["lowest level thetae"] = mpcalc.equivalent_potential_temperature(p[0], T[0], Td[0])
             od["sfc parcel mixing ratio"] = mixing_ratio_parcel
