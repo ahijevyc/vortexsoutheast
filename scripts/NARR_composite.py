@@ -116,8 +116,8 @@ def fill_NaNs_with_neighbors2d(array2d):
 
 
 def add_rgrid(ax, ring_interval=200):
-    ax.grid(alpha=0.5, linewidth=0.5) # tried moving outside loop right after figure was created but grid was not visible (even with zorder=3)
-    ax.tick_params(labelsize='xx-small', pad=0)
+    ax.grid(alpha=0.4, linewidth=0.4, color='k') # tried moving outside loop right after figure was created but grid was not visible (even with zorder=3)
+    ax.tick_params(labelsize='xx-small')
     #ax.yaxis.set_units('km') # Not sure if this helps anything. Certainly not when axis is normalized.
     start, stop = ax.get_ylim()
     radii = np.arange(start,stop+ring_interval,ring_interval)
@@ -125,7 +125,7 @@ def add_rgrid(ax, ring_interval=200):
     for i in range(len(rlabels)-1):
         rlabels[i] = ""
     logging.debug(f"add_rgrid: ring_interval={ring_interval} start={start}, stop={stop} radii={radii} {rlabels}")
-    lines, labels = ax.set_rgrids(radii, labels=rlabels, angle=0, ha='center',va="baseline", fontsize=4.5)
+    lines, labels = ax.set_rgrids(radii, labels=rlabels, angle=0, ha='center',va="bottom", fontsize=4.5) # va="baseline" puts label too close to ring
     return lines, labels
     
 def fill_NaNs_with_neighbors(values):        
@@ -280,7 +280,7 @@ stormname_years, narr_valid_times = [], [] # for composite title
 
 figplr, axes = plt.subplots(ncols=2,nrows=2,subplot_kw=dict(projection='polar'))
 # default left=0.125 right=0.9 bottom=0.1 top=0.9 wspace=0.2 hspace=0.2
-plt.subplots_adjust(left=0.05, right=1, bottom=0.04, top=0.88, hspace=0.24, wspace=0.05)
+plt.subplots_adjust(left=-0.1, right=1.1, bottom=0.05, top=0.87, hspace=0.3, wspace=0)
 
 # These dicts will have one entry for each coordinate system (axes).
 filldict   = {}
@@ -595,7 +595,7 @@ for storm in stormlist:
             fineprint.set_visible(False)
 
         # Save image. 
-        plt.savefig(snapshot, dpi=200)
+        plt.savefig(snapshot, dpi=220)
         os.system("mogrify -colors 128 "+snapshot) # severe drop in quality with 64 colors
         print('created ' + os.path.realpath(snapshot))
 
@@ -681,7 +681,7 @@ _, _ = windshearax.set_thetagrids(theta_lines, labels=("downshear","","R","","up
 
 
 # Save image. 
-plt.savefig(ofile, dpi=200) # use dpi=200 for Stan
+plt.savefig(ofile, dpi=220) # use dpi=200 for Stan
 os.system("mogrify -colors 128 "+ofile)
 print('created ' + os.path.realpath(ofile))
 
