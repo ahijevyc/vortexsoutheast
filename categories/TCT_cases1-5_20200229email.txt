@@ -1,0 +1,48 @@
+Hi Dave, 
+
+Here are some new cases for comparison. These are the start of the strong LTC, many tornadoes category. The format is the same as for the other the weaker LTC category (below). I think we should eventually aim for 10 cases in each composite to avoid possible bias from single cases - shouldn't be too hard to find 10 total cases for each category (I'll keep looking). Also, surface (or lowest NARR level) theta, and SLP would be valuable fields that I didn't mention last time.
+
+Ivan: 1200 UTC 16 Sep - 0900 UTC 17 Sep 2004 (1200 UTC 14 Sep - 0900 UTC 15 Sep 2004)
+
+Katrina: 1200 UTC 29 Aug - 0900 UTC 30 Aug 2005 (0300 UTC 28 Aug - 0000 UTC 29 Aug 2005)
+
+Rita: 1200 UTC 24 Sep - 0900 UTC 25 Sep 2005 (0600 UTC 22 Sep - 0300 UTC 23 Sep 2005)
+
+Florence: 1200 UTC 16 Sep - 1200 UTC 17 Sep 2018 (1200 UTC 12 Sep - 0900 UTC 13 Sep 2018)
+
+Gustav: 1200 UTC 1 Sep - 0900 UTC 2 Sep 2008 (0000 UTC 31 Aug - 2100 UTC 31 Aug 2008)
+
+Thanks,
+
+Stan
+
+
+
+
+-------- Forwarded Message --------
+Subject:	First 5 composite cases
+Date:	Fri, 28 Feb 2020 20:37:21 +0000
+From:	trier <trier@ucar.edu>
+To:	Dave Ahijevych <ahijevyc@ucar.edu>
+CC:	Dereka Carroll-Smith <dcarroll@ucar.edu>, George H. Bryan <gbryan@ucar.edu>
+
+
+Hi Dave,
+
+These cases are from the weak-to-intermediate TCs category with 10 more total tornadoes. I provide periods having 8 different UTC times for each to make a composite diurnal cycle. I've also included a corresponding pre-landfall period (in parentheses) to make a separate diurnal composite for comparison. I will probably want to add a few additional cases later.
+
+Lili: 1200 UTC 3 Oct - 0900 UTC 4 Oct 2002 (1200 UTC 2 Oct - 0900 UTC 3 Oct 2002)
+
+Lee: 1200 UTC 4 Sep - 0900 UTC 5 Sep 2011 (1200 UTC 2 Sep - 0900 UTC 3 Sep 2011)
+
+Hermine: 1200 UTC 1 Sep - 0900 UTC 2 Sep 2016 (1200 UTC 31 Aug - 0900 UTC 1 Sep 2016)
+
+Alberto: 1200 UTC 13 Jun - 0900 UTC 14 Jun 2006 (1200 UTC 11 Jun - 0900 UTC 12 Jun 2006)
+
+Gaston: 1200 UTC 30 Aug - 0900 UTC 31 Aug 2004 (1200 UTC 28 Aug - 0900 UTC 29 Aug 2004)
+
+The eight most desired fields are (in no particular order) vvel700, shr10_900, shr10_700, srh, pwat, sbcape, speed10m, and sh2. Like with the cases, there will probably be other fields we'd like to look at. But I think with these 5 cases (having diurnal cycles during the primary tornado period after landfall and prior to that when the TC is over the ocean) and the above 8 fields, we should get a good sense of how this might work, and be able to identify potential issues.
+
+Thanks,
+
+Stan

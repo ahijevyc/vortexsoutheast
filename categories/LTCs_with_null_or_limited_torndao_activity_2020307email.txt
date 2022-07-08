@@ -1,0 +1,23 @@
+As promised, here is a set of nine null or < 2 LTC tornado cases. Prelandfall times are in parentheses.
+
+Claudette: 1200 UTC 15 Jul - 0900 UTC 16 Jul 2003 (1200 UTC 14 Jul - 0900 UTC 15 Jul 2003)
+
+Humberto: 1200 UTC 13 Sep - 0900 UTC 14 Sep 2007 (1200 UTC 12 Sep - 0900 UTC 13 Sep 2007)
+
+Isabel: 1200 UTC 18 Sep - 0900 UTC 19 Sep 2003 (1200 UTC 17 Sep - 0900 UTC 18 Sep 2003)
+
+Gordon: 1200 UTC 5 Sep - 0900 UTC 6 Sep 2018 (0600 UTC 3 Sep - 0300 UTC 4 Sep 2018)
+
+Edouard: 1200 UTC 5 Aug - 0900 UTC 6 Aug 2008 (1200 UTC 4 Aug - 0900 UTC 5 Aug 2008)
+
+Dennis: 1200 UTC 4 Sep - 0900 UTC 5 Sep 1999 (1200 UTC 3 Sep - 0900 4 Sep 1999)
+
+Hanna: 1200 UTC 14 Sep - 0900 UTC 15 Sep 2002 (0600 UTC 13 Sep - 0300 UTC 14 Sep 2002)
+
+Arlene: 1200 UTC 11 Jun - 0900 UTC 12 Jun 2005 (0000 UTC 10 Jun - 2100 UTC 10 Jun 2005)
+
+Grace: 1200 UTC 31 Aug - 0900 UTC 1 Sep 2003 (1200 UTC 30 Aug - 0900 UTC 31 Aug 2003)*
+
+
+*changed prelandfall to this because of issues raised in Mar 10, 2020 emails with Stan
+

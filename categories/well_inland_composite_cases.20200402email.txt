@@ -1,0 +1,15 @@
+Cases for Composite Diurnal Cycle of LTCs with Tornadoes Well Inland
+
+Jeanne (2004) 12z 27 Sept – 09z 28 Sept (SC, NC, VA; 25 TCTs)
+Cindy (2005) 12z 7 July – 09z 8 July (SC, NC, VA; 22 TCTs)
+Erin (2007) 12z 18 August – 09z 19 August (Oklahoma; 6 TCTs)
+Fay (2008) 12z 26 August – 09z 27 August (GA, SC, NC; 13 TCTs)
+Hermine (2010) 12z 8 Sept – 09z 9 Sept (Texas, Oklahoma; 9 TCTs)
+Isaac (2012) 12z 1 Sept – 09z 2 Sept (AR, MO, IL; 16 TCTs)
+Bill (2015) 12z 19 June – 09z 20 June (IN, IL, KY; 11 TCTs)
+Harvey (2017) 12z 31 August – 09z 1 Sept (AL, MS, TN; 16 TCTs)
+Nate (2017) 12z 8 October – 09z 9 October (SC, NC; 12 TCTs)
+
+
+Note that Jeanne and Cindy have been used in the strong, and weak-to-intermediate composites. However, in the case of Cindy, it was a day before it is for this diurnal cycle which is well inland. 
+
