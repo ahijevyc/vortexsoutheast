@@ -18,8 +18,12 @@ set normalize_str=""
 
 # Hours in time window
 set time_window_hours=12
-set extra_time_window_hours=`expr $time_window_hours - 3`
+set anchor_hour=3
 
+module reset
+module load conda
+module load ncl
+conda activate npl
 
 set CM1=CM1_input_fields.txt
 if (-e $CM1) rm $CM1
@@ -68,14 +72,20 @@ foreach fillbarb (div250hPa/wind250hPa div925hPa/wind925hPa mslp/wind10m mlcape/
         if ($split[2] =~ shr*) set barbargs="--quiver $split[2]" # If shear, use quiver, not barb
     endif
 
-    # hours offset from 00z
-    foreach h (`seq -12 $time_window_hours 9`)
+    # Loop through diurnal cycle
+    foreach h (`seq 0 $time_window_hours 21`)
+        # add anchor_hour and take modulo 24
+        set h=`echo "($h+$anchor_hour)%24" |bc`
         # hours UTC after applying offset from 00z
         # used in output filename
-        # could be any date yyyymmdd
-        set hh=""
-        foreach n (`seq 0 3 $extra_time_window_hours`)
-            set hh=$hh`date -u --date "20080601 ${h}hours +${n}hours" +%H` # nothing special about 20080601; could be any date
+        set hh="" # string
+        set diurnal_hours=""
+        set h_end=`echo $h + $time_window_hours -3|bc`
+        foreach n (`seq --format='%02.0f' $h 3 $h_end`)
+            set n=`echo "$n % 24" |bc`
+            if ($n<10) set n=0$n
+            set hh=$hh$n
+            set diurnal_hours="$diurnal_hours $n"
         end
         set batch=$TMPDIR/$fill.$line$barb$hh.pbs
 
@@ -98,196 +108,23 @@ module load ncl
 conda activate npl
 END
 
+        foreach desc (all_LTC \
+                      strong_LTC_many_tornadoes_prelandfall \
+                      weak-to-intermediate_LTC_many_tornadoes_prelandfall \
+                      no_or_few_tornadoes_prelandfall \
+                      strong_LTC_many_tornadoes \
+                      weak-to-intermediate_LTC_many_tornadoes \
+                      no_or_few_tornadoes \
+                      tornadoes_well_inland \
+                      tornadoes_near_coast \
+                          )
 
-        # These are the "days-to-subtract" to accomodate different starting hours. Subtracting a whole number of days does not change the hour UTC.
-        set start_at_00z=`echo "($h+0)/24"|bc` 
-        set start_at_03z=`echo "($h+21)/24"|bc`
-        set start_at_06z=`echo "($h+18)/24"|bc`
-        set start_at_09z=`echo "($h+15)/24"|bc`
-        set start_at_12z=`echo "($h+12)/24"|bc`
-        set start_at_15z=`echo "($h+9)/24"|bc`
-        set start_at_18z=`echo "($h+6)/24"|bc`
-        set start_at_21z=`echo "($h+3)/24"|bc`
-
-        # ALL - different start-hours. 
-        set desc=all_LTC
-        set a=$stormlistdir/$desc.${hh}z.txt
-        if (-e $a) rm $a
-        foreach extra_hours (`seq 0 3 $extra_time_window_hours`)
-            echo Ivan      2004 `date -u --date "20040917 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Katrina   2005 `date -u --date "20050830 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Rita      2005 `date -u --date "20050925 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Florence  2018 `date -u --date "20180917 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Gustav    2008 `date -u --date "20080902 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Irma      2017 `date -u --date "20170910 ${h}hours -${start_at_12z}days +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Frances   2004 `date -u --date "20040907 ${h}hours -${start_at_03z}days +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Jeanne    2004 `date -u --date "20040927 ${h}hours -${start_at_12z}days +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Ike       2008 `date -u --date "20080914 ${h}hours -${start_at_00z}days +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Lili      2002 `date -u --date "20021004 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Lee       2011 `date -u --date "20110905 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Hermine   2016 `date -u --date "20160902 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Alberto   2006 `date -u --date "20060614 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Gaston    2004 `date -u --date "20040831 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Cindy     2005 `date -u --date "20050707 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Gabrielle 2001 `date -u --date "20010915 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Bill      2003 `date -u --date "20030702 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Debby     2012 `date -u --date "20120625 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Claudette 2003 `date -u --date "20030716 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Humberto  2007 `date -u --date "20070914 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Isabel    2003 `date -u --date "20030919 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Gordon    2018 `date -u --date "20180906 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Edouard   2008 `date -u --date "20080806 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Dennis    1999 `date -u --date "19990905 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Hanna     2002 `date -u --date "20020915 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Arlene    2005 `date -u --date "20050612 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Grace     2003 `date -u --date "20030901 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
+            set a=$stormlistdir/$desc.${hh}z.txt
+            if (! -s $a) then
+                python /glade/scratch/ahijevyc/vortexsoutheast/scripts/get_diurnal_hour.py /glade/scratch/ahijevyc/vortexsoutheast/categories/$desc.txt $diurnal_hours > $a 
+            endif
+            echo python ~ahijevyc/bin/NARR_composite.py --fill $fill $lineargs $barbargs $a $normalize_str --ofile $odir/$desc.$fill.$line$barb${hh}z.png --netcdf $odir/nc/$desc.$fill.${hh}z.nc >> $batch
         end
-        echo python ~ahijevyc/bin/NARR_composite.py --fill $fill $lineargs $barbargs $a $normalize_str --ofile $odir/$desc.$fill.$line$barb${hh}z.png --netcdf $odir/nc/$desc.$fill.${hh}z.nc >> $batch
-
-
-        # Pre-landfall 
-        #        strong_LTC_many_tornadoes_prelandfall - different start-hours. 
-        set desc=strong_LTC_many_tornadoes_prelandfall
-        set a=$stormlistdir/$desc.${hh}z.txt
-        if (-e $a) rm $a
-        foreach extra_hours (`seq 0 3 $extra_time_window_hours`)
-            echo Ivan      2004 `date -u --date "20040915 ${h}hours -${start_at_12z}days +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Katrina   2005 `date -u --date "20050829 ${h}hours -${start_at_03z}days +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Rita      2005 `date -u --date "20050923 ${h}hours -${start_at_06z}days +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Florence  2018 `date -u --date "20180913 ${h}hours -${start_at_12z}days +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Gustav    2008 `date -u --date "20080901 ${h}hours -${start_at_00z}days +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Irma      2017 `date -u --date "20170909 ${h}hours -${start_at_12z}days +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Frances   2004 `date -u --date "20040904 ${h}hours -${start_at_03z}days +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Jeanne    2004 `date -u --date "20040925 ${h}hours -${start_at_12z}days +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Ike       2008 `date -u --date "20080912 ${h}hours -${start_at_00z}days +${extra_hours}hours" +%Y%m%d%H` >> $a
-        end
-        echo python ~ahijevyc/bin/NARR_composite.py --fill $fill $lineargs $barbargs $a $normalize_str --ofile $odir/$desc.$fill.$line$barb${hh}z.png --netcdf $odir/nc/$desc.$fill.${hh}z.nc >> $batch
-
-        # Pre-landfall 
-        #        weak-to-intermediate_LTC_many_tornadoes_prelandfall - all sequences start with 12z
-        set desc=weak-to-intermediate_LTC_many_tornadoes_prelandfall
-        set a=$stormlistdir/$desc.${hh}z.txt
-        if (-e $a) rm $a
-        foreach extra_hours (`seq 0 3 $extra_time_window_hours`)
-            echo Lili      2002 `date -u --date "20021003 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Lee       2011 `date -u --date "20110903 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Hermine   2016 `date -u --date "20160901 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Alberto   2006 `date -u --date "20060612 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Gaston    2004 `date -u --date "20040829 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Cindy     2005 `date -u --date "20050706 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Gabrielle 2001 `date -u --date "20010913 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Bill      2003 `date -u --date "20030630 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Debby     2012 `date -u --date "20120624 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-        end
-        echo python ~ahijevyc/bin/NARR_composite.py --fill $fill $lineargs $barbargs $a $normalize_str --ofile $odir/$desc.$fill.$line$barb${hh}z.png --netcdf $odir/nc/$desc.$fill.${hh}z.nc >> $batch
-
-
-        # Pre-landfall 
-        #        no_or_few_tornadoes_prelandfall
-        set desc=no_or_few_tornadoes_prelandfall
-        set a=$stormlistdir/$desc.${hh}z.txt
-        if (-e $a) rm $a
-        foreach extra_hours (`seq 0 3 $extra_time_window_hours`)
-            echo Claudette 2003 `date -u --date "20030715 ${h}hours -${start_at_12z}days +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Humberto  2007 `date -u --date "20070913 ${h}hours -${start_at_12z}days +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Isabel    2003 `date -u --date "20030918 ${h}hours -${start_at_12z}days +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Gordon    2018 `date -u --date "20180904 ${h}hours -${start_at_06z}days +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Edouard   2008 `date -u --date "20080805 ${h}hours -${start_at_12z}days +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Dennis    1999 `date -u --date "19990904 ${h}hours -${start_at_12z}days +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Hanna     2002 `date -u --date "20020914 ${h}hours -${start_at_06z}days +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Arlene    2005 `date -u --date "20050611 ${h}hours -${start_at_00z}days +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Grace     2003 `date -u --date "20030831 ${h}hours -${start_at_12z}days +${extra_hours}hours" +%Y%m%d%H` >> $a
-        end
-        echo python ~ahijevyc/bin/NARR_composite.py --fill $fill $lineargs $barbargs $a $normalize_str --ofile $odir/$desc.$fill.$line$barb${hh}z.png --netcdf $odir/nc/$desc.$fill.${hh}z.nc >> $batch
-
-
-        # Post landfall - all sequences start with 12z
-        #        strong_LTC_many_tornadoes
-        set desc=strong_LTC_many_tornadoes
-        set a=$stormlistdir/$desc.${hh}z.txt
-        if (-e $a) rm $a
-        foreach extra_hours (`seq 0 3 $extra_time_window_hours`)
-            echo Ivan      2004 `date -u --date "20040917 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Katrina   2005 `date -u --date "20050830 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Rita      2005 `date -u --date "20050925 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Florence  2018 `date -u --date "20180917 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Gustav    2008 `date -u --date "20080902 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Irma      2017 `date -u --date "20170910 ${h}hours -${start_at_12z}days +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Frances   2004 `date -u --date "20040907 ${h}hours -${start_at_03z}days +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Jeanne    2004 `date -u --date "20040927 ${h}hours -${start_at_12z}days +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Ike       2008 `date -u --date "20080914 ${h}hours -${start_at_00z}days +${extra_hours}hours" +%Y%m%d%H` >> $a
-        end
-        echo python ~ahijevyc/bin/NARR_composite.py --fill $fill $lineargs $barbargs $a $normalize_str --ofile $odir/$desc.$fill.$line$barb${hh}z.png --netcdf $odir/nc/$desc.$fill.${hh}z.nc >> $batch
-
-        # Post landfall - all sequences start with 12z
-        #        weak-to-intermediate_LTC_many_tornadoes
-        set desc=weak-to-intermediate_LTC_many_tornadoes
-        set a=$stormlistdir/$desc.${hh}z.txt
-        if (-e $a) rm $a
-        foreach extra_hours (`seq 0 3 $extra_time_window_hours`)
-            echo Lili      2002 `date -u --date "20021004 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Lee       2011 `date -u --date "20110905 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Hermine   2016 `date -u --date "20160902 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Alberto   2006 `date -u --date "20060614 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Gaston    2004 `date -u --date "20040831 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Cindy     2005 `date -u --date "20050707 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Gabrielle 2001 `date -u --date "20010915 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Bill      2003 `date -u --date "20030702 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Debby     2012 `date -u --date "20120625 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-        end
-        echo python ~ahijevyc/bin/NARR_composite.py --fill $fill $lineargs $barbargs $a $normalize_str --ofile $odir/$desc.$fill.$line$barb${hh}z.png --netcdf $odir/nc/$desc.$fill.${hh}z.nc >> $batch
-
-        # Post landfall - all sequences start with 12z
-        #        no_or_few_tornadoes
-        set desc=no_or_few_tornadoes
-        set a=$stormlistdir/$desc.${hh}z.txt
-        if (-e $a) rm $a
-        foreach extra_hours (`seq 0 3 $extra_time_window_hours`)
-            echo Claudette 2003 `date -u --date "20030716 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Humberto  2007 `date -u --date "20070914 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Isabel    2003 `date -u --date "20030919 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Gordon    2018 `date -u --date "20180906 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Edouard   2008 `date -u --date "20080806 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Dennis    1999 `date -u --date "19990905 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Hanna     2002 `date -u --date "20020915 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Arlene    2005 `date -u --date "20050612 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Grace     2003 `date -u --date "20030901 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-        end
-        echo python ~ahijevyc/bin/NARR_composite.py --fill $fill $lineargs $barbargs $a $normalize_str --ofile $odir/$desc.$fill.$line$barb${hh}z.png --netcdf $odir/nc/$desc.$fill.${hh}z.nc >> $batch
-
-        # Tornadoes well inland
-        set desc=tornadoes_well_inland
-        set a=$stormlistdir/$desc.${hh}z.txt
-        if (-e $a) rm $a
-        foreach extra_hours (`seq 0 3 $extra_time_window_hours`)
-            echo Jeanne  2004 `date -u --date "20040928 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Cindy   2005 `date -u --date "20050708 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Erin    2007 `date -u --date "20070819 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Fay     2008 `date -u --date "20080827 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Hermine 2010 `date -u --date "20100909 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Isaac   2012 `date -u --date "20120902 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Bill    2015 `date -u --date "20150620 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Harvey  2017 `date -u --date "20170901 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Nate    2017 `date -u --date "20171009 ${h}hours +${extra_hours}hours" +%Y%m%d%H` >> $a
-        end
-        echo python ~ahijevyc/bin/NARR_composite.py --fill $fill $lineargs $barbargs $a $normalize_str --ofile $odir/$desc.$fill.$line$barb${hh}z.png --netcdf $odir/nc/$desc.$fill.${hh}z.nc >> $batch
-
-        # Tornadoes near the Coast - all, but Irene start at 12z
-        set desc=tornadoes_near_coast
-        set a=$stormlistdir/$desc.${hh}z.txt
-        if (-e $a) rm $a
-        foreach extra_hours (`seq 0 3 $extra_time_window_hours`)
-            echo Andrea    2013 `date -u --date "20130607 ${h}hours +${extra_hours}hours"                      +%Y%m%d%H` >> $a
-            echo Jeanne    2004 `date -u --date "20040927 ${h}hours +${extra_hours}hours"                      +%Y%m%d%H` >> $a
-            echo Gabrielle 2001 `date -u --date "20010915 ${h}hours +${extra_hours}hours"                      +%Y%m%d%H` >> $a
-            echo Isidore   2002 `date -u --date "20020926 ${h}hours +${extra_hours}hours"                      +%Y%m%d%H` >> $a
-            echo Floyd     1999 `date -u --date "19990916 ${h}hours +${extra_hours}hours"                      +%Y%m%d%H` >> $a
-            echo Bret      1999 `date -u --date "19990823 ${h}hours +${extra_hours}hours"                      +%Y%m%d%H` >> $a
-            echo Alberto   2006 `date -u --date "20060614 ${h}hours +${extra_hours}hours"                      +%Y%m%d%H` >> $a
-            echo Irene     2011 `date -u --date "20110828 ${h}hours -${start_at_12z}days +${extra_hours}hours" +%Y%m%d%H` >> $a
-            echo Irma      2017 `date -u --date "20170911 ${h}hours +${extra_hours}hours"                      +%Y%m%d%H` >> $a
-        end
-        echo python ~ahijevyc/bin/NARR_composite.py --fill $fill $lineargs $barbargs $a $normalize_str --ofile $odir/$desc.$fill.$line$barb${hh}z.png --netcdf $odir/nc/$desc.$fill.${hh}z.nc >> $batch
 
 
 
