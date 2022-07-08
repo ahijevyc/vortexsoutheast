@@ -262,7 +262,7 @@ def main():
             plt.savefig(ofile)
             logging.info(f"made {os.path.realpath(ofile)}")
             fig.clear()
-            odf = odf.append(od, ignore_index=True)
+            odf = pd.concat([odf,pd.DataFrame([od])], ignore_index=True) # Avoid FutureWarning about append. Keep od as dictionary (don't convert to DataFrame) 
     logging.info(f"move units from values to column names")
     odf = move_units_from_values_to_column_names(odf)
     odir = os.path.join(os.path.dirname(ifile), "../data")  # output to parent directory under data/.
