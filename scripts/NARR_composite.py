@@ -161,7 +161,7 @@ parser.add_argument("--no-torn", action='store_false', help="don't overlay torna
 parser.add_argument("-o", "--ofile", type=str, help="name of final composite image")
 parser.add_argument("-q", "--quiver", type=str, default= None, help='variable name for quiver field')
 parser.add_argument("--spctd", type=float, default=1.5, help="hours on either side of valid time to show SPC storm reports")
-parser.add_argument("ifiles", nargs="+", type=argparse.FileType('r'), help="text file(s). each line starts with an atcf filename, followed by a list of yyyymmddhh times")
+parser.add_argument("ifiles", nargs="+", type=argparse.FileType('r'), help="text file(s). each line starts with a storm name, followed by a yyyymmddhh time")
 parser.add_argument("--torn", action='store_true', help="overlay tornado reports")
 parser.set_defaults(torn=True)
 parser.add_argument("--wind", action='store_true', help="overlay wind reports")
@@ -310,11 +310,10 @@ stormlist = []
 for ifile in ifiles:
     stormlist.extend(ifile.readlines())
 for storm in stormlist:
-    words = storm.split()
-    stormname = words[0]
-    year =  words[1]
+    stormname, narrtime = storm.split()
+    narrtime = pytz.utc.localize(datetime.datetime.strptime(narrtime, '%Y%m%d%H'))
+    year =  str(narrtime.year)
     stormname_year = stormname + " " + year
-    timelist = [pytz.utc.localize(datetime.datetime.strptime(x, '%Y%m%d%H')) for x in words[2:]]
     # Read TC tracks
     useIBTrACS = True
     useNHCbesttracks = not useIBTrACS
@@ -338,16 +337,15 @@ for storm in stormlist:
     
 
     # Make sure all times in time list are within the TC track time window.
-    for t in timelist:
-        if t < df.valid_time.min() or t > df.valid_time.max():
-            print("requested time",t,"is outside TC track time window. Exiting.")
-            sys.exit(1)
+    if narrtime < df.valid_time.min() or narrtime > df.valid_time.max():
+        logging.error(f"requested time {narrtime} is outside TC track time window. Exiting.")
+        sys.exit(1)
 
 
 
     all_storm_reports = pd.DataFrame()
     if torn or wind or hail:
-        all_storm_reports = spc.get_storm_reports(start=min(timelist)-spc_td, end=max(timelist)+spc_td)
+        all_storm_reports = spc.get_storm_reports(start=narrtime-spc_td, end=narrtime+spc_td)
 
     if not hail:
         all_storm_reports = all_storm_reports[all_storm_reports["event_type"] != "hail"]
@@ -373,8 +371,8 @@ for storm in stormlist:
             continue
 
 
-        if valid_time not in timelist:
-            logging.debug(f'TC valid time not requested. Skipping.')
+        if valid_time !=  narrtime:
+            logging.debug(f'TC valid time {valid_time} not requested. Skipping.')
             continue
 
 
@@ -613,7 +611,7 @@ if len(narr_files) == 0:
 
 best_track_and_narr_files = [" ".join(x) for x in zip(best_track_files, narr_files)] # create list of best track and narr files paired with " " space
 # Don't list all narr ifiles if there are a lot. show count.
-if len(best_track_and_narr_files) > 15:
+if len(best_track_and_narr_files) > 18:
     best_track_and_narr_files_list = str(len(best_track_and_narr_files))+ " narr files"
 else:
     best_track_and_narr_files_list = "\n".join(best_track_and_narr_files)
