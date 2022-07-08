@@ -1,0 +1,55 @@
+Strong LTCs, numerous tornadoes:
+
+1.    Katrina05; upshr SHV(32.46, -93.78) 8/30/00z, dnshr FFC(33.36, -84.56) 8/30/00z
+2.    Ivan04; upshr JAN(32.31, -90.08) 9/16/18z, dnshr FFC(33.36, -84.56) 9/16/12z
+3.    Rita05; upshr FWD(32.83, -97.30) 9/25/00z, dnshr JAN(32.31, -90.08) 9/25/00z
+4.    Florence18; upshr FFC(33.46, -84.56) 9/17/00z, dnshr GSO(36.08, -79.95) 9/17/00z
+5.    Irma17; dnshr JAX(30.50, -81.70) 9/11/00z
+6.    Jeanne04; upshr BMX(33.16, -86.76) 9/28/00z, dnshr MHX(34.78, -76.88) 9/28/00z
+7.    Gustav08; upshr CRP(27.76, -97.50) 9/2/00z, dnshr JAN(32.31, -90.08) 9/2/00z
+8.    Ike08; upshr FWD(32.83, -97.30) 9/14/00z, dnshr LZK(34.83, -92.27) 9/14/00z
+9.    Frances04; upshr JAN(32.31, -90.08) 9/8/00z, dnshr GSO(36.08, -79.95) 9/8/00z
+
+Weak LTCs, many tornadoes:
+
+1.    Lili02; dnshr JAN(32.31, -90.08) 10/3/18z
+2.    Gaston04; upshr GSO(36.08, -79.95) 8/31/00z, dnshr WAL(37.93, -75.48) 8/30/12z
+3.    Alberto06; upshr BMX(33.16, -86.76) 6/14/00z, dnshr CHS(32.90, -80.03) 6/14/00z
+4.    Lee11; upshr LCH(30.11, -93.21) 9/5/00z, dnshr BMX(33.16, -86.76) 9/5/00z)
+5.    Hermine16; upshr JAN(30.34, -93.21) 9/2/00z, dnshr XMR(28.46, -80.55) 9/2/00z
+6.    Gabrielle01; upshr TLH(30.45, -84.30) 9/14/18z, dnshr XMR(28.46, -80.55) 9/14/18z
+7.    Debby12; upshr LIX(30.34, -89.83) 6/25/00z, dnshr XMR(28.46, -80.55) 6/25/00z
+8.    Cindy05; upshr JAN(32.31, -90.08) 7/7/00z
+9.    Bill03; upshr LZK(34.83, -92.27) 7/2/00z, dnshr FFC(33.36, -84.56) 7/2/00z
+
+Weak LTCs, few or no tornadoes:
+
+1.    Dennis99; upshr GSO(36.08,-79.50) 9/5/00z, dnshr WAL(37.93, -75.48) 9/5/00z
+2.    Hanna02; upshr LCH(30.11,-93.21) 9/14/12z, dnshr BMX(33.16, -86.76) 9/14/12z
+3.    Claudette03; upshr DRT(29.36,-100.91) 7/15/18z, dnshr CRP(27.76,-97.50) 7/16/00z
+4.    Isabelle03; upshr CHS(32.90, -80.03) 9/19/00z, dnshr WAL(37.93, -75.48) 9/19/00z
+5.    Gordon18; upshr LZK(34.83, -92.27) 9/6/00z, dnshr BMX(33.16, -86.76) 9/6/00z
+6.    Grace03; upshr CRP(27.76, -97.50) 9/1/00z, dnshr LCH(30.11,-93.21) 9/1/00z
+7.    Arlene05; upshr LCH(30.11, -93.21) 6/12/00z, dnshr FFC(33.36, -84.56) 6/12/00z
+8.    Humberto07; upshr FWD(32.83, -97.30) 9/14/12z, dnshr LIX(30.34, -89.83) 9/14/00z
+9.    Edouard08; upshr CRP(27.26, -97.50) 8/5/12z, dnshr LCH(30.11, -93.21) 8/6/00z
+
+WMO numbers
+
+SHV = 72248 (Shreveport, LA)
+FFC = 72215 (Peachtree City, GA)
+JAN = 72235 (Jackson, MS)
+FWD = 72249 (Dallas-Ft. Worth, TX)
+GSO = 72317 (Greensboro, NC)
+JAX = 72206 (Jacksonville, FL)
+BMX = 72230 (Birmingham, AL)
+MHX = 72305 (Newport, NC)
+CRP = 72251 (Corpus Christi, TX)
+LZK = 72340 (Little Rock, AR)
+WAL = 72402 (Wallops Island, VA)
+CHS = 72208 (Charleston, SC)
+LCH = 72240 (Lake Charles, LA)
+LIX = 72233 (Slidell, LA)
+TLH = 72214 (Tallahassee, FL)
+XMR = 74794 (Cape Kennedy, FL)
+DRT = 72261 (Del Rio, TX)
