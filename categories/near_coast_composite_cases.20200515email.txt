@@ -5,8 +5,8 @@ Cases for Composite Diurnal Cycle of LTCs with Tornadoes near the Coast
 3. Gabrielle (2001) 12z 14 Sept – 09z 15* Sept (FL; 10 TCTs)
 4. Isidore (2002) 12z 25 Sept – 09z 26 Sept (LA,AL,FL; 10 TCTs)
 5. Floyd (1999) 12z 15 Sept – 09z 16 Sept (NC; 16 TCTs)
-6. Brett (1999) 12z 22 Aug – 09z 23 Aug (TX; 5 TCTs)
-7. Alberto (2006) 12z 13 Jun** – 09z 14 Jun** (FL, SC, NC; 12 TCTs)
+6. Bret** (1999) 12z 22 Aug – 09z 23 Aug (TX; 5 TCTs)
+7. Alberto (2006) 12z 13 Jun# – 09z 14 Jun# (FL, SC, NC; 12 TCTs)
 8. Irene (2011) 00z 27 Aug – 21z 27 Aug (NC to NY; 9 TCTs)
 9. Irma (2017) 12z 10 Sept – 09z 11 Sept (FL; 17 TCTs)
 
@@ -15,4 +15,5 @@ the well-inland composite one day later. Irma (2017), Gabrielle (2001), and Isid
 have been used for other tornado environment categories.
 
 *Email typo had 14 instead of 15 
-**Typo in email had Aug instead of Jun
+** email typo had Brett
+#Typo in email had Aug instead of Jun

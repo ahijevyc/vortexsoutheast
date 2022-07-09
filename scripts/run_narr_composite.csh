@@ -17,7 +17,7 @@ set normalize_str=""
 #set normalize_str="--normalize_by Vt500km"
 
 # Hours in time window
-set time_window_hours=24
+set time_window_hours=6
 set anchor_hour=0
 
 module load conda
@@ -52,10 +52,11 @@ foreach fillbarb (div250hPa/wind250hPa div925hPa/wind925hPa mslp/wind10m mlcape/
     set line=""
     # line contour argumements, and add line to output file name
     if ($fill =~ shr10m_* | $fill =~ vvel700*) then
-        #set line="sbcape."
-        #set lineargs="--line sbcape --clev 500 1000 2000" 
-        set line="shr10m_700hPa."
-        set lineargs="--line shr10m_700hPa --clev 8 12 16 20" 
+        # manually switch comments below and rerun to get both sbcape and shear
+        set line="sbcape."
+        set lineargs="--line sbcape --clev 500 1000 2000" 
+        #set line="shr10m_700hPa."
+        #set lineargs="--line shr10m_700hPa --clev 8 12 16 20" 
     endif
     if ($fill == "scp" | $fill == "tctp") then
         set line="srh."
@@ -127,7 +128,7 @@ END
 
 
 
-        echo qsub $batch \; sleep 5
+        echo qsub $batch \; sleep 3
     end
 
 end
