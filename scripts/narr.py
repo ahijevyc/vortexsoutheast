@@ -151,8 +151,7 @@ fieldinfo['rh2']['vertical'] = 2*units.meters
 fieldinfo['rhlev1'] = fieldinfo['rh700hPa'].copy() 
 fieldinfo['rhlev1']['fname'] = 'R_H_221_HYBL'
 fieldinfo['rhlev1']['vertical'] = 'lowest model level'
-fieldinfo['scp'] = fieldinfo['stp'] # stp is in fieldinfo.py not scp 
-fieldinfo['scp']['fname'] = ['CAPE_221_SFC','CIN_221_SFC','HLCY_221_HTGY']
+fieldinfo['scp'] = fieldinfo['stp'].copy() # stp is in fieldinfo but scp is not
 fieldinfo['sh2']    = {'levels' : [0.5,1,2,4,8,12,14,16,17,18,19,20,21,22,23,24], 'cmap':fieldinfo['td2']['cmap'], 'fname': 'SPF_H_221_HTGL', 'vertical':2*units.meters, 'units':'g/kg'}
 fieldinfo['shlev1'] = {'levels' : [0.5,1,2,4,8,12,14,16,17,18,19,20,21,22,23,24], 'cmap':fieldinfo['td2']['cmap'], 'fname': 'SPF_H_221_HYBL', 'vertical':'lowest model level', 'units':'g/kg'}
 fieldinfo['shr10m_30m']  = fieldinfo['speed10m'].copy()
@@ -167,12 +166,11 @@ fieldinfo['srh'] = fieldinfo['srh1'].copy()
 fieldinfo['srh']['levels'].extend([750])
 fieldinfo['srh']['cmap'].extend(readNCLcm('wind_17lev')[-6:-4])
 fieldinfo['srh']['fname'] = 'HLCY_221_HTGY'
-fieldinfo['stp'] = fieldinfo['scp']
 fieldinfo['surface_height'] = fieldinfo['sbcape'].copy()
 fieldinfo['surface_height']['fname'] = 'HGT_221_SFC'
 fieldinfo['t2']['fname'] = 'TMP_221_SFC'
 fieldinfo['t2']['units'] = 'degF'
-fieldinfo['tctp'] = fieldinfo['scp']
+fieldinfo['tctp'] = fieldinfo['stp'].copy()
 fieldinfo['tctp']['levels'] = [2*x for x in fieldinfo['tctp']['levels']] # can't multiply list by 2. List repeats itself instead of multiplying elements by 2.
 fieldinfo['tctp2014'] = fieldinfo['tctp'].copy()
 thcmap = ['#eeeeee', '#dddddd', '#cccccc', '#aaaaaa']+readNCLcm('precip2_17lev')[3:-1]

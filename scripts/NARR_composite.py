@@ -246,7 +246,6 @@ if normalize_by:
 pbot = 850*units("hPa") # for wind shear coordinate
 ptop = 200*units("hPa")
 fineprint_string = f"daz: {daz}$\degree$   dr: {dr}{dr_units}   layer for wind shear coordinate:{ptop:~}-{pbot:~}"
-fineprint_string += "\nstorm and time(s) text file(s): " + " ".join([os.path.realpath(x.name) for x in ifiles])
 azbins = np.arange(0,360+daz,daz)
 theta_lines = range(0,360,45)
 storm_rpt_legend_kw = dict(fontsize=4.8, bbox_to_anchor=(0.8, -0.01), loc='upper left', borderaxespad=0, frameon=False, title_fontsize='xx-small')
@@ -274,7 +273,7 @@ dd, ii = tree.query(np.c_[x0.ravel(),y0.ravel()], k=1, distance_upper_bound=dx)
 ii = ii[dd < dx/2] # remove neighbors over dx/2 away from nearest point
 
 
-best_track_files, narr_files = [], [] # used for fineprint
+best_track_files, narr_files = [], [] # used for netCDF file
 lons, lats, times = [], [], [] # used for netCDF file
 stormname_years, narr_valid_times = [], [] # for composite title
 
@@ -588,7 +587,7 @@ for storm in stormlist:
         cb2.set_ticks(levels)
         cb2.outline.set_linewidth(0.35) # TODO: Does this change anything?
 
-        fineprint.set_text(fineprint_string + f"\n{data.attrs['ifile']}\ncreated {datetime.datetime.now()}")
+        fineprint.set_text(fineprint_string + f"\n{best_track_file} {data.attrs['ifile']}\ncreated {datetime.datetime.now()}")
         if no_fineprint: # hide fineprint
             fineprint.set_visible(False)
 
@@ -609,15 +608,15 @@ if len(narr_files) == 0:
     print("no NARR files to composite")
     sys.exit(0)
 
-best_track_and_narr_files = [" ".join(x) for x in zip(best_track_files, narr_files)] # create list of best track and narr files paired with " " space
-# Don't list all narr ifiles if there are a lot. show count.
-if len(best_track_and_narr_files) > 18:
-    best_track_and_narr_files_list = str(len(best_track_and_narr_files))+ " narr files"
-else:
-    best_track_and_narr_files_list = "\n".join(best_track_and_narr_files)
-if debug:
-    print("best_track_and_narr_files",best_track_and_narr_files)
-fineprint.set_text(fineprint_string + "\n" + best_track_and_narr_files_list + f"\ncreated {datetime.datetime.now()}")
+logging.debug(f"{len(stormlist)} storm and times {stormlist}")
+ncols = 5 
+stormlist_fineprint = f"{len(stormlist)} times\n"
+if len(stormlist) < 120:
+    for i,s in enumerate(stormlist):
+        stormlist_fineprint += f" {s.rstrip().center(25)}"
+        if i % ncols == ncols-1:
+            stormlist_fineprint += "\n"
+fineprint.set_text(fineprint_string + "\n" + stormlist_fineprint.rstrip() + f"\ncreated {datetime.datetime.now()}")
 
 # Create hours UTC string for figure title - used to show min-max, but with a plethora of years that didn't make sense. 
 fmt = '%H %Z'

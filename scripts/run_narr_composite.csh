@@ -17,7 +17,7 @@ set normalize_str=""
 #set normalize_str="--normalize_by Vt500km"
 
 # Hours in time window
-set time_window_hours=6
+set time_window_hours=24
 set anchor_hour=0
 
 module load conda
