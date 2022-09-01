@@ -28,7 +28,7 @@ set CM1=CM1_input_fields.txt
 if (-e $CM1) rm $CM1
 foreach f (u v sh hgt temp)
     foreach p (100 125 150 175 200 225 250 275 300 350 400 450 500 550 600 650 700 750 800 825 850 875 900 925 950 975 1000)
-        echo $f$p/wind$p >> $CM1
+        echo $f$p/_/wind$p >> $CM1
     end
 end
 
@@ -36,40 +36,35 @@ end
 # You don't need to change --ofile and --netcdf arguments yourself. 
 
 
-foreach fillbarb (div250hPa/wind250hPa div925hPa/wind925hPa mslp/wind10m mlcape/wind10m mlcinh/wind10m pwat/wind10m rh925hPa/wind925hPa rh850hPa/wind850hPa rh700hPa/wind700hPa rh500hPa/wind500hPa rh_0deg/wind500hPa shr10m_500hPa/shr10m_500hPa shr10m_700hPa/shr10m_700hPa shr10m_900hPa/shr10m_900hPa speed10m/wind10m speed700hPa/wind700hPa speed500hPa/wind500hPa sh2/wind10m srh stp theta2/wind10m thetae2/wind10m thetasfc/wind10m vort250hPa/wind250hPa vort925hPa/wind925hPa vvel700hPa/wind700hPa vvel850hPa/wind850hPa speed10m/shr10m_700hPa tctp2014/shr10m_3000m tctp/shr10m_3000m tctp/shr10m_1000m scp/shr10m_700hPa scp/shr10m_900hPa shr10m_900hPa/shr10m_900hPa shr10m_700hPa/shr10m_700hPa) # torn symbols in magenta?
-#foreach fillbarb (tctp2014/shr10m_3000m tctp/shr10m_3000m tctp/shr10m_1000m)
-#foreach fillbarb (vvel700hPa/wind700hPa) # torn symbols in yellow
-#foreach fillbarb (speed10m/shr10m_700hPa tctp/shr10m_700hPa tctp/shr10m_900hPa scp/shr10m_700hPa scp/shr10m_900hPa shr10m_900hPa/shr10m_900hPa shr10m_700hPa/shr10m_700hPa) # torn symbols in magenta?
-#foreach fillbarb (`cat $CM1`)
-#foreach fillbarb (mlcinh/wind10m mlcape/wind10m srh/shr10m_700hPa) # need mlcape for NARR_composite_skewt.py
+foreach filllinebarb (`cat filllinebarb.txt`)
+#foreach filllinebarb (`cat $CM1`)
 
     
-    # substitution operator. Turn slash to space so array can be set.
-    set split=($fillbarb:s,/, ,)
+    # substitution operator. Turn slashes to spaces so array can be set.
+    set split=($filllinebarb:as,/, ,)
     set fill=$split[1]
+    set line=$split[2]
+    set barb=$split[3]
 
-    set lineargs=""
-    set line=""
-    # line contour argumements, and add line to output file name
-    if ($fill =~ shr10m_* | $fill =~ vvel700*) then
-        # manually switch comments below and rerun to get both sbcape and shear
-        set line="sbcape."
-        set lineargs="--line sbcape --clev 500 1000 2000" 
-        #set line="shr10m_700hPa."
-        #set lineargs="--line shr10m_700hPa --clev 8 12 16 20" 
-    endif
-    if ($fill == "scp" | $fill == "tctp") then
-        set line="srh."
-        set lineargs="--line srh --clev 150 200 300" 
+    if ($line == _) then
+        set line=""
+        set lineargs=""
+    else
+        # line contour argumements, and add line to output file name
+        if ($line == sbcape) set lineargs="--line $line --clev 500 1000 2000" 
+        if ($line =~ shr10m_*) set lineargs="--line $line --clev 8 12 16 20" 
+        if ($line == srh) set lineargs="--line $line --clev 150 200 300" 
+        set line="$line."
     endif
 
-    set barbargs=""
-    set barb=""
-    # wind barb/quiver argumements, and to output file name
-    if ($#split >= 2) then
-        set barb="$split[2]."
-        set barbargs="--barb $split[2]" # Can't make one-line because 2nd element not defined.
-        if ($split[2] =~ shr*) set barbargs="--quiver $split[2]" # If shear, use quiver, not barb
+    if ($barb == _) then
+        set barb=""
+        set barbargs=""
+    else
+        # wind barb/quiver argumements, and to output file name
+        set barbargs="--barb $barb" # Can't make one-line because 2nd element not defined.
+        if ($barb =~ shr*) set barbargs="--quiver $barb" # If shear, use quiver, not barb
+        set barb="$barb."
     endif
 
     # Loop through diurnal cycle
@@ -128,7 +123,7 @@ END
 
 
 
-        echo qsub $batch \; sleep 3
+        echo qsub $batch \; sleep 2
     end
 
 end
