@@ -27,9 +27,33 @@ import pdb
 import pytz
 import re
 from scipy import spatial
+from scipy.stats import gaussian_kde
 import spc
 import sys
 import xarray
+
+def m(x, w):
+    """Weighted Mean"""
+    return np.sum(x * w) / np.sum(w)
+
+def cov(x, y, w):
+    """Weighted Covariance"""
+    return np.sum(w * (x - m(x, w)) * (y - m(y, w))) / np.sum(w)
+
+def corr(x, y, w):
+    """Weighted Correlation"""
+    x = x.values
+    y = y.values
+    return cov(x, y, w) / np.sqrt(cov(x, x, w) * cov(y, y, w))
+
+def desc(data):
+    assert 'timetitle' in data.attrs, "timetitle not attribute of data"+str(data)
+    assert 'verttitle' in data.attrs
+    assert 'long_name' in data.attrs
+    timetitle = data.attrs['timetitle']
+    verttitle = str(data.attrs['verttitle'])
+    desc = f"{timetitle} {verttitle} {data.long_name} [{data.metpy.units:~}]" # abbreviate units.
+    return desc
 
 def isvector(data):
     # Is 'uv' one of the coordinates?
@@ -55,7 +79,7 @@ def rotate_vector(vector,az):
     vector.values[1] = np.sin(az)*u + np.cos(az)*v
     return vector
 
-def roll_rotate_sel(values, heading, debug=False):
+def roll_rotate_sel(values, heading):
     # Get daz from azimuth coordinate of values DataArray.
     daz = values["azimuth"].diff(dim="azimuth").values
     assert daz.min() == daz.max(), 'roll_rotate_sel(): not all daz are the same'
@@ -67,52 +91,6 @@ def roll_rotate_sel(values, heading, debug=False):
     values = rotate_vector(values, heading) # rotate vector
     values = uvsel(values)
     return values
-
-
-def histogram2d_weighted(bearing, dist_from_center, azbins, rbins, data):
-    bins = [azbins, rbins]
-    bearing = bearing.values.flatten()
-    dist_from_center = dist_from_center.values.flatten()
-    data = data.metpy.dequantify() # move units to attrs dict so we may assign them to new DataArray.
-    n, _, _ = np.histogram2d(bearing, dist_from_center, bins=bins)
-    drs = np.diff(rbins) # bin widths
-    dazs = np.diff(azbins)
-    assert np.all(drs == drs[0]), "range bins not equal width"
-    assert np.all(dazs == dazs[0]), "azimuth bins not equal width"
-    range_center1D, theta_center1D = drs[0]/2+rbins[:-1], dazs[0]/2+azbins[:-1]
-    if isvector(data):
-        weightedh2 = np.zeros((2, len(bins[0])-1, len(bins[1])-1))
-        weightedh2[0], _, _ = np.histogram2d(bearing, dist_from_center, bins=bins, weights=data.isel(uv=0).values.flatten())
-        weightedh2[1], _, _ = np.histogram2d(bearing, dist_from_center, bins=bins, weights=data.isel(uv=1).values.flatten())
-        coords={"uv": data.coords["uv"], "azimuth":theta_center1D, "range":range_center1D}
-    else:
-        weightedh2, _, _ = np.histogram2d(bearing, dist_from_center, bins=bins, weights=data.values.flatten())
-        coords={"azimuth":theta_center1D, "range":range_center1D}
-    n = np.ma.masked_where(n == 0,n)# avoid RuntimeWarning: invalid value encountered in true_divide
-    da = xarray.DataArray(data = weightedh2/n, coords=coords, dims=coords.keys(), attrs=data.attrs, name=data.name) 
-    # Fill NaNs with neighbors
-    da = fill_NaNs_with_neighbors(da)
-    da = da.metpy.quantify() # move units from attrs dict back to data array (make it a pint quantity)
-    return da
-
-def fill_NaNs_with_neighbors2d(array2d):
-    # Fill NaNs with neighbors
-    # Input DataArray
-    # convert to ndarray
-    values = array2d.values
-    values = pd.DataFrame(values)
-    # operate on DataFrame
-    values = values.interpolate(limit_direction='both') # goofy around NARR edges
-    if values.isnull().all().any(): # if any columns are all null
-        print("***Found nan in filled value array. trying to interpolate across columns***") # Think this is fine but not sure.
-        # Happens when you zoom in a lot.
-        values = values.interpolate(axis='columns')
-        if values[0].isnull().all(): # if column 0 is still all null, backfill from neighboring column
-            values.fillna(method="backfill", axis="columns", inplace=True)
-            print("***Backfilled missing data in column 0***")
-    # Output DataArray
-    array2d.values = values
-    return array2d
 
 
 def add_rgrid(ax, ring_interval=200):
@@ -128,15 +106,6 @@ def add_rgrid(ax, ring_interval=200):
     lines, labels = ax.set_rgrids(radii, labels=rlabels, angle=0, ha='center',va="bottom", fontsize=4.5) # va="baseline" puts label too close to ring
     return lines, labels
     
-def fill_NaNs_with_neighbors(values):        
-    if len(values.shape) == 2:
-        return fill_NaNs_with_neighbors2d(values)
-    if len(values.shape) == 3:
-        for i, aa in enumerate(values):
-            aa = fill_NaNs_with_neighbors2d(aa)
-            values[i] = aa.values
-    return values
-
 def xr_list_mean(x):
     # mean of list of xarray DataArrays
     return xarray.concat(x, dim="storm").mean(dim="storm")
@@ -149,6 +118,7 @@ parser.add_argument("--cart", action='store_true', help="plot cartopy version (n
 parser.add_argument("--clevels", type=float, nargs='+', default= [500, 1000, 2000, 3000, 4000, 5000, 10000], help='line contour levels')
 parser.add_argument("--clobber", action='store_true', help="overwrite any old outfile, if it exists")
 parser.add_argument("-d", "--debug", action='store_true')
+parser.add_argument("--dpi", type=int, default=250, help="dpi of image output")
 parser.add_argument("-e", "--extent", type=float, nargs=4, help="debug plot extent lonmin, lonmax, latmin, latmax", default=[-98, -74, 20, 38])
 parser.add_argument("-f", "--fill", type=str, default= 'shr10m_700hPa', help='variable name for contour fill field')
 parser.add_argument("--hail", action='store_true', help="overlay hail reports")
@@ -175,6 +145,7 @@ cart           = args.cart
 clobber        = args.clobber
 contour_levels = args.clevels
 debug          = args.debug
+dpi            = args.dpi
 extent         = args.extent
 fill           = args.fill
 hail           = args.hail
@@ -191,7 +162,7 @@ wind           = args.wind
 workdir        = args.workdir
 
 logger = logging.getLogger()
-logging.basicConfig(format='%(asctime)s %(message)s')
+logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 if debug:
     logger.setLevel(logging.DEBUG)
 
@@ -216,15 +187,6 @@ if not clobber and os.path.isfile(ofile) and netcdf and os.path.isfile(netcdf):
     print(ofile,"and",netcdf,"exist. Skipping. Use --clobber option to override.")
     sys.exit(0)
 
-def desc(data):
-    assert 'timetitle' in data.attrs, "timetitle not attribute of data"+str(data)
-    assert 'verttitle' in data.attrs
-    assert 'long_name' in data.attrs
-    timetitle = data.attrs['timetitle']
-    verttitle = str(data.attrs['verttitle'])
-    desc = f"{timetitle} {verttitle} {data.long_name} [{data.metpy.units:~}]" # abbreviate units.
-    return desc
-
 
 # Tried adding units to daz and dr but units really messed up polar pcolor and contour functions downstream.
 daz = 1# azimuth bin width (delta azimuth)
@@ -248,7 +210,6 @@ ptop = 200*units("hPa")
 fineprint_string = f"daz: {daz}$\degree$   dr: {dr}{dr_units}   layer for wind shear coordinate:{ptop:~}-{pbot:~}"
 azbins = np.arange(0,360+daz,daz)
 theta_lines = range(0,360,45)
-storm_rpt_legend_kw = dict(fontsize=4.8, bbox_to_anchor=(0.8, -0.01), loc='upper left', borderaxespad=0, frameon=False, title_fontsize='xx-small')
 linecontour_alpha = .6
 linecontour_fontsize = 4
 barblength = 3.5
@@ -258,14 +219,15 @@ barbkwdict = dict(length=barblength, linewidth=0.2, alpha=0.6, barb_increments=b
 
 rbins  = np.arange(0,max_range+dr,dr)
 r2d, theta2d = np.meshgrid(rbins, azbins)
+binarea = np.pi * (2*r2d + dr) * dr * daz/360.
 range_center1D, theta_center1D = dr/2+rbins[:-1], daz/2+azbins[:-1]
+r_center2D, theta_center2D = np.meshgrid(range_center1D, theta_center1D) # one less element in range and azimuth than range_center1D
 polar_sz = (len(azbins)-1, len(rbins)-1)
 
 #---Locate gridded wind barbs on polar plot
 dx = 100 # wind barb grid spacing
 mg = np.arange(-max_range, max_range+dx, dx)
 x0, y0 = np.meshgrid(mg, mg)
-r_center2D, theta_center2D = np.meshgrid(range_center1D, theta_center1D)
 xp = r_center2D * np.cos(np.radians(90-theta_center2D))
 yp = r_center2D * np.sin(np.radians(90-theta_center2D))
 tree = spatial.KDTree(np.c_[xp.ravel(),yp.ravel()])
@@ -279,27 +241,27 @@ stormname_years, narr_valid_times = [], [] # for composite title
 
 figplr, axes = plt.subplots(ncols=2,nrows=2,subplot_kw=dict(projection='polar'))
 # default left=0.125 right=0.9 bottom=0.1 top=0.9 wspace=0.2 hspace=0.2
-plt.subplots_adjust(left=-0.1, right=1.1, bottom=0.05, top=0.87, hspace=0.3, wspace=0)
+plt.subplots_adjust(left=0, right=0.99, bottom=0.06, top=0.82, hspace=0.43, wspace=0)
 
 # These dicts will have one entry for each coordinate system (axes).
 filldict   = {}
 linedict   = {}
 barbdict   = {}
 quiverdict = {}
-storm_rpts_overlays = {}
+storm_rpt_dict = {}
 # any reason to keep as 2x2 ndarray?
 axes = axes.flatten()
 for ax in axes:
     ax.set_theta_zero_location("N")
     ax.set_theta_direction(-1)
-    storm_rpts_overlays[ax] = []# for centroid of reports. list of lists of multiple event type
+    storm_rpt_dict[ax] = pd.DataFrame(columns=["event_type"])# for centroid of reports. 
     filldict[ax] = []
     linedict[ax] = []
     barbdict[ax] = []
     quiverdict[ax] = []
 (northax, stormmotionax, blankax, windshearax) = axes
 blankax.set_visible(False)
-cbar_ax = figplr.add_axes([0.05, 0.32, 0.49, 0.015])
+cbar_ax = figplr.add_axes([0.05, 0.32, 0.45, 0.015])
 # Empty fineprint_string placeholder for fine print in lower left corner of image.
 fineprint = plt.annotate(text="", xy=(4,1), xycoords=('figure pixels','figure pixels'), va="bottom", fontsize=3.2, wrap=True)
 
@@ -345,6 +307,8 @@ for storm in stormlist:
     all_storm_reports = pd.DataFrame()
     if torn or wind or hail:
         all_storm_reports = spc.get_storm_reports(start=narrtime-spc_td, end=narrtime+spc_td)
+        # Until I figure out how to combine significant and non-significant for centroid and kde while leaving separate legend handles, combine everything now.
+        all_storm_reports = spc.combine_significant(all_storm_reports)
 
     if not hail:
         all_storm_reports = all_storm_reports[all_storm_reports["event_type"] != "hail"]
@@ -394,10 +358,11 @@ for storm in stormlist:
         storm_report_end   = valid_time + spc_td
         storm_report_time_window_str = "storm reports\n"+storm_report_start.strftime('%m/%d %H%M') +' - '+ storm_report_end.strftime('%m/%d %H%M %Z')
         storm_report_window = (all_storm_reports.time >= storm_report_start) & (all_storm_reports.time < storm_report_end)
-        storm_reports = all_storm_reports[storm_report_window]
+        storm_reports = all_storm_reports.loc[storm_report_window].copy() # avoid SettingWithCopyWarning in spc.polarkde by applying .copy()
 
         if storm_reports.empty:
             storm_report_time_window_str = "no "+storm_report_time_window_str
+
 
         data = narr.scalardata(fill, valid_time, targetdir=workdir)
         levels = data.attrs['levels']
@@ -458,7 +423,7 @@ for storm in stormlist:
             axc.set_title(axc.get_title() + "  " + valid_time.strftime('%Y-%m-%d %H UTC'), fontsize='x-small')
 
             if not storm_reports.empty:
-                legend_items = spc.plot(storm_reports, axc, drawrange=0, debug=debug)
+                legend_items = spc.plot(storm_reports, axc, drawrange=0)
                 axc.legend(handles=legend_items.values(), fontsize='xx-small').set_title(storm_report_time_window_str, prop={'size':'4.5'})
 
             # *must* call draw in order to get the axis boundary used to add ticks:
@@ -488,116 +453,93 @@ for storm in stormlist:
         
         logging.debug("creating weighted and unweighted 2d histograms of theta and range...")
 
-        for ax in axes:
-            ax.grid(False) #Auto-removal of grids by pcolor() and pcolormesh() is deprecated since 3.5 and will be removed two minor releases later; please call grid(False)
+        values = spc.histogram2d_weighted(bearing, dist_from_center, azbins, rbins, data) # Don't apply uvsel() here; we need values for storm motion and wind shear
 
-        values = histogram2d_weighted(bearing, dist_from_center, azbins, rbins, data) # Don't apply uvsel() here; we need values for storm motion and wind shear
-        polarf = northax.pcolor(np.radians(theta2d), r2d, uvsel(values), cmap=cmap,norm=colors.BoundaryNorm(levels,cmap.N)) # tried DataArray.plot.imshow and pcolormesh, tried 1D coordinates.
-        filldict[northax].append(uvsel(values))
-        if line: 
-            linecontour_values = histogram2d_weighted(bearing, dist_from_center, azbins, rbins, linecontourdata) # Don't apply uvsel() here; we need values for storm motion and wind shear
-            polarc = northax.contour(np.radians(theta_center1D), range_center1D, uvsel(linecontour_values).T, contour_levels, colors="black", alpha=linecontour_alpha)
-            northax.clabel(polarc, fontsize=linecontour_fontsize, fmt='%.0f')
-            linedict[northax].append(uvsel(linecontour_values))
-        if barb:
-            barb_values = histogram2d_weighted(bearing, dist_from_center, azbins, rbins, barbdata)
-            polarb = northax.barbs(np.radians(theta_center2D.ravel()[ii]), r_center2D.ravel()[ii], *barb_values.stack(gate=["azimuth","range"]).isel(gate=ii), **barbkwdict)
-            barbdict[northax].append(barb_values) # TODO: do we need uvsel() for barbs?
-        if quiver:
-            quiver_values = histogram2d_weighted(bearing, dist_from_center, azbins, rbins, quiverdata)
-            polarq = northax.quiver(np.radians(theta_center2D.ravel()[ii]), r_center2D.ravel()[ii], *quiver_values.stack(gate=["azimuth","range"]).isel(gate=ii))
-            quiverdict[northax].append(quiver_values)
-            powerof10 = 10**int(np.log10(np.sqrt(quiverdata[0]**2 + quiverdata[1]**2).max().values)) # order of magnitude  
-            northax.quiverkey(polarq, 0.1, -0.05, powerof10, f"{powerof10} {quiver_values.metpy.units:~}", labelpos='S', fontproperties=dict(size='xx-small'))
-
-
-        # Rotate so Storm motion vector points up
-        storm_motion_values = roll_rotate_sel(values, storm_heading)
-
-        polarf2 = stormmotionax.pcolor(np.radians(theta2d), r2d, storm_motion_values, cmap=cmap,norm=colors.BoundaryNorm(levels,cmap.N))
-        filldict[stormmotionax].append(storm_motion_values)
-        if line:
-            linecontour_storm_motion_values = roll_rotate_sel(linecontour_values, storm_heading)
-            polarc = stormmotionax.contour(np.radians(theta_center1D), range_center1D, linecontour_storm_motion_values.T, contour_levels, colors="black", alpha=linecontour_alpha)
-            stormmotionax.clabel(polarc, fontsize=linecontour_fontsize, fmt='%.0f')
-            linedict[stormmotionax].append(linecontour_storm_motion_values)
-        if barb:
-            storm_motion_barb_values = roll_rotate_sel(barb_values, storm_heading) 
-            polarb = stormmotionax.barbs(np.radians(theta_center2D.ravel()[ii]), r_center2D.ravel()[ii], *storm_motion_barb_values.stack(gate=["azimuth","range"]).isel(gate=ii), **barbkwdict)
-            barbdict[stormmotionax].append(storm_motion_barb_values)
-        if quiver:
-            storm_motion_quiver_values = roll_rotate_sel(quiver_values, storm_heading)
-            polarq = stormmotionax.quiver(np.radians(theta_center2D.ravel()[ii]), r_center2D.ravel()[ii], *storm_motion_quiver_values.stack(gate=["azimuth","range"]).isel(gate=ii))
-            quiverdict[stormmotionax].append(storm_motion_quiver_values)
-
-           
-
-        # Rotate so Wind shear vector points up
         TCFlow = ncl.steering_flow(lat0=lat1,lon0=lon1,storm_heading=storm_heading,storm_speed=storm_speed,
                 stormname=stormname, rx=4.5, ensmember=stormname, ptop=ptop, pbot=pbot, 
                 file_ncl=narr.get(valid_time, narrtype=narr.narr3D, targetdir=workdir), debug=debug)
         wind_shear_heading = TCFlow["wind_shear_heading"] * units.degrees
         wind_shear_mag   = TCFlow["wind_shear_speed"] * units.parse_expression("m/s")
         wind_shear_values = roll_rotate_sel(values, wind_shear_heading) 
-        polarf3 = windshearax.pcolor(np.radians(theta2d), r2d, wind_shear_values, cmap=cmap,norm=colors.BoundaryNorm(levels,cmap.N))
-        filldict[windshearax].append(wind_shear_values)
-        if line:
-            linecontour_wind_shear_values = roll_rotate_sel(linecontour_values, wind_shear_heading)
-            polarc = windshearax.contour(np.radians(theta_center1D), range_center1D, linecontour_wind_shear_values.T, contour_levels, colors="black", alpha=linecontour_alpha)
-            windshearax.clabel(polarc, fontsize=linecontour_fontsize, fmt='%.0f')
-            linedict[windshearax].append(linecontour_wind_shear_values)
-        if barb:
-            wind_shear_barb_values = roll_rotate_sel(barb_values, wind_shear_heading)
-            polarb = windshearax.barbs(np.radians(theta_center2D.ravel()[ii]), r_center2D.ravel()[ii], *wind_shear_barb_values.stack(gate=["azimuth","range"]).isel(gate=ii), **barbkwdict)
-            barbdict[windshearax].append(wind_shear_barb_values)
-        if quiver:
-            wind_shear_quiver_values = roll_rotate_sel(quiver_values, wind_shear_heading)
-            polarb = windshearax.quiver(np.radians(theta_center2D.ravel()[ii]), r_center2D.ravel()[ii], *wind_shear_quiver_values.stack(gate=["azimuth","range"]).isel(gate=ii))
-            quiverdict[windshearax].append(wind_shear_quiver_values)
-            
-            
 
-        for ax in axes:
+        ax_headings = {
+                northax      :0 * units.deg, # north points up
+                stormmotionax: storm_heading, # Rotate so Storm motion vector points up
+                windshearax  : wind_shear_heading # Rotate so Wind shear vector points up
+                }
+
+        ax_labels = {
+                northax : ("N","","E","","S","","W",""),
+                stormmotionax: (f"storm heading {storm_heading.m:.0f}$\degree$ at {storm_speed:~.1f}\nfront","","R","","rear","","L",""),
+                windshearax : (f"wind shear heading {wind_shear_heading.m:.0f}$\degree$ at {wind_shear_mag:~.1f}\ndownshear","","R","","upshear","","L","")
+                }
+
+        for ax,axheading in ax_headings.items():
+            ax.grid(False) #Auto-removal of grids by pcolor() and pcolormesh() is deprecated since 3.5 and will be removed two minor releases later; please call grid(False)
+
+            rotated_values = roll_rotate_sel(values, axheading)
+            polarf = ax.pcolor(np.radians(theta2d), r2d, uvsel(rotated_values), cmap=cmap,norm=colors.BoundaryNorm(levels,cmap.N)) # tried DataArray.plot.imshow and pcolormesh, tried 1D coordinates.
+            filldict[ax].append(uvsel(rotated_values))
+            if line: 
+                linecontour_values = spc.histogram2d_weighted(bearing, dist_from_center, azbins, rbins, linecontourdata) # Don't apply uvsel() here; we need values for storm motion and wind shear
+                linecontour_values = roll_rotate_sel(linecontour_values, axheading)
+                polarc = ax.contour(np.radians(theta_center1D), range_center1D, uvsel(linecontour_values).T, contour_levels, colors="black", alpha=linecontour_alpha)
+                ax.clabel(polarc, fontsize=linecontour_fontsize, fmt='%.0f')
+                linedict[ax].append(uvsel(linecontour_values))
+            if barb:
+                barb_values = spc.histogram2d_weighted(bearing, dist_from_center, azbins, rbins, barbdata)
+                barb_values = roll_rotate_sel(barb_values, axheading) 
+                polarb = ax.barbs(np.radians(theta_center2D.ravel()[ii]), r_center2D.ravel()[ii], *barb_values.stack(gate=["azimuth","range"]).isel(gate=ii), **barbkwdict)
+                barbdict[ax].append(barb_values) 
+            if quiver:
+                quiver_values = spc.histogram2d_weighted(bearing, dist_from_center, azbins, rbins, quiverdata)
+                quiver_values = roll_rotate_sel(quiver_values, axheading)
+                polarq = ax.quiver(np.radians(theta_center2D.ravel()[ii]), r_center2D.ravel()[ii], *quiver_values.stack(gate=["azimuth","range"]).isel(gate=ii))
+                quiverdict[ax].append(quiver_values)
+                powerof10 = 10**int(np.log10(np.sqrt(quiverdata[0]**2 + quiverdata[1]**2).max().values)) # order of magnitude  
+                ax.quiverkey(polarq, 0.1, -0.05, powerof10, f"{powerof10} {quiver_values.metpy.units:~}", labelpos='S', fontproperties=dict(size='xx-small'))
             lines, labels = add_rgrid(ax)
 
-        # Add storm reports. save reports from stormmitionax and windshearax in addition to northax so we can clear axes but replot at the end.
-        if not storm_reports.empty:
-            logging.info(f"found {len(storm_reports)} storm reports. {storm_reports['significant'].sum()} significant.")
-            rptkw = dict(normalize_range_by=normalize_range_by, debug=debug)
-            storm_rpts_overlays[northax].append(      spc.polarplot(lon1, lat1, storm_reports, northax,       zero_azimuth=0*units.deg,        **rptkw) )
-            storm_rpts_overlays[stormmotionax].append(spc.polarplot(lon1, lat1, storm_reports, stormmotionax, zero_azimuth=storm_heading,      **rptkw) )
-            storm_rpts_overlays[windshearax].append(  spc.polarplot(lon1, lat1, storm_reports, windshearax,   zero_azimuth=wind_shear_heading, **rptkw) )
-            # legend below northax 
-            storm_report_legend = northax.legend(handles=storm_rpts_overlays[northax][-1].values(), **storm_rpt_legend_kw, title=storm_report_time_window_str)
-            nhandles = len(storm_report_legend.legendHandles)
-            logging.info(f"found {nhandles} storm report legend handles")
+            # Plot storm reports. Append reports to DataFrame for stormmitionax and windshearax in addition to northax so we can clear axes but replot at the end.
+            if not storm_reports.empty:
+                logging.info(f"found {len(storm_reports)} storm reports. {storm_reports['significant'].sum()} significant.")
+                rptkw = dict(normalize_range_by=normalize_range_by)
+                this_storm_rpts = spc.polarplot(lon1, lat1, storm_reports, ax, zero_azimuth=axheading, add_legend = ax == northax, legend_title=storm_report_time_window_str, **rptkw)
+                storm_rpt_dict[ax] = pd.concat([storm_rpt_dict[ax], this_storm_rpts])
+                showkde = True
+                if showkde:
+                    w = r_center2D**2 # weight by area (range squared)
+                    rptkde = spc.polarkde(lon1, lat1, storm_reports, ax, azbins, rbins, spc_td, zero_azimuth=axheading, ds=10*units.km, add_colorbar=False, **rptkw) #TODO: avoid additional colorbars pushing axes inward. Can't figure out how to remove them.
+                    for event_type in rptkde:
+                        rho = corr(uvsel(rotated_values), rptkde[event_type], w)
+                        logging.info(f"{fill} {event_type} r={rho}")
+                        ax.set_title(f"{desc(data)} {event_type} r={rho:.3f}", fontsize="xx-small")
 
-        _, _ = northax.set_thetagrids(theta_lines, labels=(f"N","","E","","S","","W",""), fontweight="demi", fontsize="large")
-        _, _ = stormmotionax.set_thetagrids(theta_lines, labels=(f"storm heading {storm_heading.m:.0f}$\degree$ at {storm_speed:~.1f}\nfront","","R","","rear","","L",""), fontweight="demi")
-        _, _ = windshearax.set_thetagrids(theta_lines, labels=(f"wind shear heading {wind_shear_heading.m:.0f}$\degree$ at {wind_shear_mag:~.1f}\ndownshear","","R","","upshear","","L",""), fontweight="demi")
+            fontsize = "large" if ax == northax else "x-small"
+            _, _ = ax.set_thetagrids(theta_lines, labels=ax_labels[ax], fontweight="demi", fontsize=fontsize)
+
 
         # Shared colorbar
-        if polarf.cmap != polarf2.cmap or polarf.cmap != polarf3.cmap: # Make sure colorbar applies to all subplots
-            print("colormap changed between subplots")
-            sys.exit(1)
-        cb2 = figplr.colorbar(polarf, cax=cbar_ax, orientation='horizontal')
-        cb2.set_label(data.metpy.units, fontsize='xx-small')
-        cb2.ax.set_title(cbar_title, fontsize='xx-small')
-        cb2.ax.tick_params(labelsize='xx-small')
-        cb2.set_ticks(levels)
-        cb2.outline.set_linewidth(0.35) # TODO: Does this change anything?
+        cb = figplr.colorbar(polarf, cax=cbar_ax, orientation='horizontal')
+        cb.set_label(data.metpy.units, fontsize='xx-small')
+        cb.ax.set_title(cbar_title, fontsize='xx-small')
+        cb.ax.tick_params(labelsize='xx-small')
+        cb.set_ticks(levels)
+        cb.outline.set_linewidth(0.35) # TODO: Does this change anything?
 
         fineprint.set_text(fineprint_string + f"\n{best_track_file} {data.attrs['ifile']}\ncreated {datetime.datetime.now()}")
         if no_fineprint: # hide fineprint
             fineprint.set_visible(False)
 
         # Save image. 
-        plt.savefig(snapshot, dpi=220)
+        plt.savefig(snapshot, dpi=dpi)
         os.system("mogrify -colors 128 "+snapshot) # severe drop in quality with 64 colors
-        print('created ' + os.path.realpath(snapshot))
+        logging.info(f'created {os.path.realpath(snapshot)}')
 
         # Clear all axes. We have lists of storm report collections for later.
         for ax in axes:
+            # Kludge to remove kde colorbars
+            #[x.remove() for x in figplr.axes if x.get_label() == '<colorbar>']
             ax.clear()
             ax.set_theta_zero_location("N")
             ax.set_theta_direction(-1)
@@ -636,11 +578,12 @@ figplr.suptitle(", ".join(sorted_storms) + "\n" + hours_str, fontsize=fontsize) 
 assert polarf.get_array().size == np.mean(filldict[northax], axis=0).size, "filled contour field changed size. Check for nans"
 for ax in [northax, stormmotionax, windshearax]:
     ax.grid(False)
-    ax.pcolor(np.radians(theta2d), r2d, xr_list_mean(filldict[ax]), cmap=cmap,norm=colors.BoundaryNorm(levels,cmap.N))
+    fillmean = xr_list_mean(filldict[ax]) # used for pcolor and correlation
+    ax.pcolor(np.radians(theta2d), r2d, fillmean, cmap=cmap,norm=colors.BoundaryNorm(levels,cmap.N))
     lines, labels = add_rgrid(ax)
-    x = xr_list_mean(filldict[ax])
+    # don't use logging here. don't want timestamp
     print(f"heading and range of maximum {fill}:", end="")
-    print(x.isel(x.argmax(...)))
+    print(fillmean.isel(fillmean.argmax(...)))
 
     if line:
         pc = ax.contour(np.radians(theta_center1D), range_center1D, (np.mean(linedict[ax], axis=0)).T, contour_levels, colors="black", alpha=linecontour_alpha)
@@ -648,28 +591,69 @@ for ax in [northax, stormmotionax, windshearax]:
     if barb:
         ax.barbs(np.radians(theta_center2D.ravel()[ii]), r_center2D.ravel()[ii], *xr_list_mean(barbdict[ax]).stack(gate=["azimuth","range"]).isel(gate=ii), **barbkwdict)
     if quiver:
+        # save polarq for quiverkey
         polarq = ax.quiver(np.radians(theta_center2D.ravel()[ii]), r_center2D.ravel()[ii], *xr_list_mean(quiverdict[ax]).stack(gate=["azimuth","range"]).isel(gate=ii)) 
 
     # Composite storm reports
-    # Concatenate values of same keys in a list of dicts.
-    merged_dict = {k:[d.get(k) for d in storm_rpts_overlays[ax] if k in d] for k in set().union(*storm_rpts_overlays[ax])}
     # get centroid of each type of storm report
     handles = [] # for legend
     labels = [] # for legend
-    for event_type in merged_dict:
-        pcs = [ax.add_artist(pc) for pc in merged_dict[event_type]]
-        lsr = [x.get_offsets().data for x in merged_dict[event_type]]
-        lsr = np.concatenate(lsr)
-        theta_deg = np.degrees(lsr[:,0]) * units.deg # maybe assign units back in .get_offsets().data ?
-        range_km  = lsr[:,1] * units.km
-        handles.append(pcs[0]) # only use first PathCollection element for legend
-        labels.append(f"{event_type} ({len(lsr)})") # but append total number of events to legend label
-        print(f"centroid of {ax} coord {event_type} reports {spc.centroid_polar(theta_deg, range_km)}")
-    if ax == northax:
-        storm_report_legend = ax.legend(handles=handles, labels=labels, title='storm reports', **storm_rpt_legend_kw)
+    kwdict = spc.symbol_dict()
+    for event_type, xrpts in storm_rpt_dict[ax].groupby("event_type"):
+        show_storm_rpt_scatter = False
+        if show_storm_rpt_scatter:
+            pc = ax.scatter(np.radians(xrpts["heading"]), xrpts["range"], alpha=0.8, **kwdict[event_type])
+            handles.append(pc) # PathCollection element for legend
+        lsr_heading = xrpts["heading"].values * units.deg 
+        lsr_range  = xrpts["range"].values * units.km
+        n = xrpts.size
+        labels.append(f"{event_type} ({n})") # append total number of events to legend label
+        logging.info(f"centroid of {ax} coord {event_type} reports {spc.centroid_polar(lsr_heading, lsr_range)}")
+        # Try to plot kde
+        rptx = lsr_range * np.cos(lsr_heading)
+        rpty = lsr_range * np.sin(lsr_heading)
+        ds = 2
+        X, Y = np.mgrid[-max_range:max_range+ds:ds, -max_range:max_range+ds:ds] 
+        az = pd.DataFrame(np.degrees(np.arctan2(Y,X))) # Make DataFrame because histogram2d_weighted expects a .values attribute
+        az[az < 0] = az[az < 0] + 360 # azbins is 0-360 but az was -180 to +180
+        dist_from_center = pd.DataFrame(np.sqrt(X**2 + Y**2))
+        positions = np.vstack([X.ravel(), Y.ravel()])
+        weights=None
+        if event_type == "torn": 
+            weights = xrpts.mag + 1 # F-scale plus one. (F-sum from McCaul, 1991)
+            event_type = "F-sum"
+        kernel = gaussian_kde(np.vstack([rptx,rpty]), weights=weights)
+        Z = np.reshape(kernel(positions).T, X.shape)
+        time_window_sum = len(stormlist) * 2 * spc_td.total_seconds()*units.seconds
+        time_window_sum = time_window_sum.to("days")
+        Z = xarray.DataArray(n * Z  / lsr_range.units**2 / time_window_sum) # histogram2d_weighted expects a DataArray with units.
+        # convert Cartesian grid Z to polar coordinates
+        pkde = spc.histogram2d_weighted(az, dist_from_center, azbins, rbins, Z)
+        pkde["azimuth"] = np.radians(pkde.azimuth) # Polar Axes are in radians not degrees.
+        polarc = pkde.plot.contour(x="azimuth",y="range", ax=ax, levels=[0.0005, 0.001, 0.002, 0.005, 0.01, 0.02], colors="black", 
+                linewidths=0.5, add_colorbar=True, cbar_kwargs={"shrink":0.75,"pad":0.09})
+
+        cb = polarc.colorbar
+        cb.formatter.set_powerlimits((-2,2))
+        cb.update_ticks()
+        cb.ax.yaxis.offsetText.set(size='xx-small')
+        cb.ax.yaxis.offsetText.set_horizontalalignment("left")
+        cb.set_label(event_type + " " + cb.ax.yaxis.get_label().get_text(),fontsize="xx-small")
+        cb.ax.tick_params(labelsize='xx-small')
+    
+        ax.set_xlabel('')
+        ax.set_ylabel('')
+        w = r_center2D**2 # weight by area (range squared)
+        rho = corr(fillmean, pkde, w)
+        rho_limit = 600*units.km
+        w[r_center2D*units.km >= rho_limit] = 0.
+        rho_limited = corr(fillmean, pkde, w) 
+        logging.info(f"{fill} {event_type} r={rho:.3f} r{rho_limit:~}={rho_limited:.3f}")
+        ax.set_title(f"{desc(data)} {event_type} r={rho:.3f} r$_{{{rho_limit:~}}}$={rho_limited:.3f}", fontsize="xx-small")
+    if ax == northax: # add storm report legend and quiver scale to north axes
         if quiver:
             powerof10 =10**int(np.log10(np.sqrt(quiverdata[0]**2 + quiverdata[1]**2).max().values))
-            northax.quiverkey(polarq, 0.1, -0.03, powerof10, f"{powerof10} {quiver_values.metpy.units:~}", labelpos='S', fontproperties=dict(size='xx-small'))
+            ax.quiverkey(polarq, 0.1, -0.03, powerof10, f"{powerof10} {quiver_values.metpy.units:~}", labelpos='S', fontproperties=dict(size='xx-small'))
 
 # Tried popping top Text major ticklabel object from thetalabels, altering it, and reinserting into thetalabels, but had no effect.
 _, _ = northax.set_thetagrids(theta_lines, labels=(f"N","","E","","S","","W",""), fontweight="demi", fontsize="large")
@@ -678,25 +662,31 @@ _, _ = windshearax.set_thetagrids(theta_lines, labels=("downshear","","R","","up
 
 
 # Save image. 
-plt.savefig(ofile, dpi=220) # use dpi=200 for Stan
+plt.savefig(ofile, dpi=dpi) 
 os.system("mogrify -colors 128 "+ofile)
-print('created ' + os.path.realpath(ofile))
+logging.info(f'created {os.path.realpath(ofile)}')
+
+def coord_stack(d):
+    # Tried to Quantify coord_stack with data.metpy.units so netCDF will have units attribute, but .to_netcdf can't handle Quantity object.
+    return np.stack([d[northax], d[stormmotionax], d[windshearax]])
 
 if netcdf:
-    coord_stack = np.stack([filldict[northax], filldict[stormmotionax], filldict[windshearax]])
-    # Tried to Quantify coord_stack with data.metpy.units so netCDF will have units attribute, but .to_netcdf can't handle Quantity object.
-    ds = xarray.Dataset(
-            {
-                fill               : (('coord', 'storm', 'azimuth', 'range'),  coord_stack), 
+
+    ds_dict = {
+                fill               : (('coord', 'storm', 'azimuth', 'range'),  coord_stack(filldict)),
                 "best_track_files" : (('storm'), best_track_files),
                 "narr_files"       : (('storm'), narr_files),
                 "lon"              : (('storm'), lons),
                 "lat"              : (('storm'), lats),
                 "time"             : (('storm'), narr_valid_times)
-            },
-            coords={'coord' : ["north","storm motion","wind shear"], 'range' : range_center1D, 'azimuth' : theta_center1D, 'storm':stormname_years}
-        )
-    # TODO: add line contour and wind barb components, if they exist.
+              }
+    
+    # add line contour, wind barb components and quiver components, if they exist. If line, barb, or quiver is same string as fill, fill will be replaced. no diff for line, but barb and quiver have u and v components too.
+    if line: ds_dict[line] = (('coord', 'storm', 'azimuth', 'range'), coord_stack(linedict))
+    if barb: ds_dict[barb] = (('coord', 'storm', 'component', 'azimuth', 'range'), coord_stack(barbdict))
+    if quiver: ds_dict[quiver] = (('coord', 'storm', 'component', 'azimuth', 'range'), coord_stack(quiverdict))
+    ds = xarray.Dataset(ds_dict, coords={'coord' : ["north","storm motion","wind shear"], 'range' : range_center1D, 'azimuth' : theta_center1D, 'storm':stormname_years, 'component':["u","v"]})
+
     attrs = data.metpy.dequantify().attrs # dequantify returns variables cast to magnitude and units on attribute. Or else units are lost here. 
     # "cmap" doesn't translate well to netCDF, "ifile" and "initial_time" populated by last NARR file, not list of all NARR files, as it should be
     # "arraylevel" should work but sometimes it is data type O.
@@ -720,5 +710,5 @@ if netcdf:
     ds["time"].values = ds.time.astype(np.datetime64)
     ds["time"].encoding['units'] = "hours since 1970-01-01"
     ds.to_netcdf(netcdf)
-    print("wrote",netcdf)
+    logging.info(f"wrote {netcdf}")
 
