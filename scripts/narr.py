@@ -96,7 +96,7 @@ for lev in levs:
     rh = fstr('rh',lev)
     if rh not in fieldinfo: fieldinfo[rh] = {}
     fieldinfo[rh]['levels'] = range(0,100,10)
-    fieldinfo[rh]['cmap'] = readNCLcm('CBR_drywet')
+    fieldinfo[rh]['cmap'] = readNCLcm('CBR_drywet')[1:-1] # take out 2 darkest colors so black shows up on top of them.
     fieldinfo[rh]['fname'] = ['TMP_221_ISBL','SPF_H_221_ISBL']
     fieldinfo[rh]['vertical'] = lev
     fieldinfo[rh]['units'] = 'percent'
