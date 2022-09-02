@@ -630,7 +630,7 @@ for ax in [northax, stormmotionax, windshearax]:
         # convert Cartesian grid Z to polar coordinates
         pkde = spc.histogram2d_weighted(az, dist_from_center, azbins, rbins, Z)
         pkde["azimuth"] = np.radians(pkde.azimuth) # Polar Axes are in radians not degrees.
-        polarc = pkde.plot.contour(x="azimuth",y="range", ax=ax, levels=[0.0005, 0.001, 0.002, 0.005, 0.01, 0.02], colors="black", 
+        polarc = pkde.plot.contour(x="azimuth",y="range", ax=ax, levels=[0.001, 0.002, 0.004, 0.008, 0.016, 0.032], colors="black", 
                 linewidths=0.5, add_colorbar=True, cbar_kwargs={"shrink":0.75,"pad":0.09})
 
         cb = polarc.colorbar

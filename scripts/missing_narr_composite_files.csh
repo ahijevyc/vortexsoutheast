@@ -9,7 +9,7 @@ cd /glade/scratch/ahijevyc/trier/VSE
 set b=b.csh
 if (-e $b) rm $b
 foreach desc (all_LTC strong_LTC_many_tornadoes_prelandfall weak-to-intermediate_LTC_many_tornadoes_prelandfall no_or_few_tornadoes_prelandfall strong_LTC_many_tornadoes weak-to-intermediate_LTC_many_tornadoes no_or_few_tornadoes tornadoes_well_inland tornadoes_near_coast)
-    foreach hh (0003 0609 1215 1821 03060912 15182100 0003060912151821)
+    foreach hh (03060912 15182100 0003060912151821)
         foreach filllinebarb (`cat /glade/scratch/ahijevyc/vortexsoutheast/scripts/filllinebarb.txt`)
             set split=($filllinebarb:as,/, ,)
             set fill=$split[1]
@@ -24,7 +24,6 @@ foreach desc (all_LTC strong_LTC_many_tornadoes_prelandfall weak-to-intermediate
                     
             ls $desc.$fill.$line$barb${hh}z.png > /dev/null
             if ($status != 0) echo qsub /glade/scratch/ahijevyc/temp/$fill.$line$barb$hh.pbs >> $b
-            break
         end
         foreach f (u v sh hgt temp)
             continue # skip these
