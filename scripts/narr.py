@@ -43,7 +43,7 @@ def fstr(f,lev):
     return f"{f}{lev:~}".replace(" ","")
 
 # wind, hgt, rh, sh, temp at all possible vertical levels
-levs = [l * units.meters for l in [10,30,1000,3000,5000,6000]]
+levs = [l * units.meters for l in [10,30,1000,1500,3000,5000,6000]]
 levs.extend(np.arange(100,1025,25) * units.hPa) # large range useful for Chris Rozoff's CM1 model. Use wide range to prevent "out of contour range" error in NARR_composite.py.
 levs.extend([l * units["dimensionless"] for l in ['lev1', 'trop']])
 for lev in levs:
@@ -540,7 +540,7 @@ def scalardata(field: str, valid_time: datetime.datetime, targetdir: str = targe
             bulk_shear = scalardata('shr10m_500hPa', valid_time, targetdir=targetdir)
             # In SPC help, cin is positive in SCP formulation.
             cin_term = -40 * units.parse_expression("J/kg")/cin
-            cin_term = cin_term.where(cin < -40*units.parse_expression("J/kg"), other=1)
+            cin_term = cin_term.where(cin < -40*units.parse_expression("J/kg"), other=1) # muCIN term based on Gropp and Davenport (2018), Aug issue of WaF. Set to 1.0 when muCIN > -40 kg-1.
             scp = mcalc.supercell_composite(cape, srh, bulk_shear) * cin_term.metpy.unit_array
             attrs = {'long_name': 'supercell composite parameter'}
             data = xarray.DataArray(data=scp, attrs=attrs) 
@@ -556,6 +556,7 @@ def scalardata(field: str, valid_time: datetime.datetime, targetdir: str = targe
             # Caveat, NARR storm relative helicity (srh) is 0-3 km AGL, while STP expects 0-1 km AGL. 
             # Tried to ignore non-finite elements to avoid RuntimeWarning: invalid value encountered in greater/less but couldn't use 2-d boolean indexing with cape
             # cape and bulk_shear have different nans
+            # metpy.calc.significant_tornado is the same as the official SPC mesoanalysis definition, but without the cin term.
             stp = mcalc.significant_tornado(cape, lifted_condensation_level_height, srh, bulk_shear) * cin_term.metpy.unit_array
             attrs = {'long_name': 'significant tornado parameter'} # , 'verttitle':lifted_condensation_level_height.attrs['verttitle']} # don't want "2 meter" verttitle
             data = xarray.DataArray(data=stp, attrs=attrs) 
