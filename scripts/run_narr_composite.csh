@@ -17,8 +17,8 @@ set normalize_str=""
 #set normalize_str="--normalize_by Vt500km"
 
 # Hours in time window
-set time_window_hours=12
-set anchor_hour=3
+set time_window_hours=24
+set anchor_hour=0
 
 module load conda
 module load ncl
@@ -36,7 +36,7 @@ end
 # You don't need to change --ofile and --netcdf arguments yourself. 
 
 
-foreach filllinebarb (`cat filllinebarb.txt`)
+foreach filllinebarb (`cat /glade/scratch/ahijevyc/vortexsoutheast/scripts/filllinebarb.txt`)
 #foreach filllinebarb (`cat $CM1`)
 
     
