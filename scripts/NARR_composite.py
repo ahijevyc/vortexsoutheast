@@ -140,26 +140,26 @@ parser.add_argument('-w', "--workdir", type=str, default="/glade/scratch/"+os.ge
 
 # Assign arguments to simple-named variables
 args = parser.parse_args()
-barb           = args.barb
-cart           = args.cart
-clobber        = args.clobber
-contour_levels = args.clevels
-debug          = args.debug
-dpi            = args.dpi
-extent         = args.extent
-fill           = args.fill
-hail           = args.hail
-line           = args.line
-max_range      = args.max_range
-netcdf         = args.netcdf
-no_fineprint   = args.no_fineprint
-normalize_by   = args.normalize_by
-quiver         = args.quiver
-spc_td         = datetime.timedelta(hours=args.spctd)
-ifiles         = args.ifiles
-torn           = args.torn
-wind           = args.wind
-workdir        = args.workdir
+barb            = args.barb
+cart            = args.cart
+clobber         = args.clobber
+lcontour_levels = args.clevels
+debug           = args.debug
+dpi             = args.dpi
+extent          = args.extent
+fill            = args.fill
+hail            = args.hail
+line            = args.line
+max_range       = args.max_range
+netcdf          = args.netcdf
+no_fineprint    = args.no_fineprint
+normalize_by    = args.normalize_by
+quiver          = args.quiver
+spc_td          = datetime.timedelta(hours=args.spctd)
+ifiles          = args.ifiles
+torn            = args.torn
+wind            = args.wind
+workdir         = args.workdir
 
 logger = logging.getLogger()
 logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
@@ -405,7 +405,7 @@ for storm in stormlist:
 
             cfill = axc.contourf(lon,lat,uvsel(data),levels=levels,cmap=cmap,norm=colors.BoundaryNorm(levels,cmap.N),transform=cartopy.crs.PlateCarree())
             if line:
-                line_contour = axc.contour(lon,lat,uvsel(linecontourdata),levels=contour_levels,cmap=linecontourdata.attrs["cmap"],norm=colors.BoundaryNorm(contour_levels,linecontourdata.attrs["cmap"].N),transform=cartopy.crs.PlateCarree())
+                line_contour = axc.contour(lon,lat,uvsel(linecontourdata),levels=lcontour_levels,cmap=linecontourdata.attrs["cmap"],norm=colors.BoundaryNorm(lcontour_levels,linecontourdata.attrs["cmap"].N),transform=cartopy.crs.PlateCarree())
                 line_contour_labels = axc.clabel(line_contour, fontsize=linecontour_fontsize, fmt='%.0f')
             axc.set_title(stormname_year)
 
@@ -483,7 +483,7 @@ for storm in stormlist:
             if line: 
                 linecontour_values = spc.histogram2d_weighted(bearing, dist_from_center, azbins, rbins, linecontourdata) # Don't apply uvsel() here; we need values for storm motion and wind shear
                 linecontour_values = roll_rotate_sel(linecontour_values, axheading)
-                polarc = ax.contour(np.radians(theta_center1D), range_center1D, uvsel(linecontour_values).T, contour_levels, colors="black", alpha=linecontour_alpha)
+                polarc = ax.contour(np.radians(theta_center1D), range_center1D, uvsel(linecontour_values).T, lcontour_levels, colors="black", alpha=linecontour_alpha)
                 ax.clabel(polarc, fontsize=linecontour_fontsize, fmt='%.0f')
                 linedict[ax].append(uvsel(linecontour_values))
             if barb:
@@ -502,10 +502,12 @@ for storm in stormlist:
 
             # Plot storm reports. Append reports to DataFrame for stormmitionax and windshearax in addition to northax so we can clear axes but replot at the end.
             if not storm_reports.empty:
-                logging.info(f"found {len(storm_reports)} storm reports. {storm_reports['significant'].sum()} significant.")
                 rptkw = dict(normalize_range_by=normalize_range_by)
-                this_storm_rpts = spc.polarplot(lon1, lat1, storm_reports, ax, zero_azimuth=axheading, add_legend = ax == northax, legend_title=storm_report_time_window_str, **rptkw)
-                storm_rpt_dict[ax] = pd.concat([storm_rpt_dict[ax], this_storm_rpts])
+                # Return DataFrame filtered for max_range with additional "range" and "heading" columns.
+                storm_reports = spc.polarplot(lon1, lat1, storm_reports, ax, zero_azimuth=axheading, add_legend = ax == northax, legend_title=storm_report_time_window_str, **rptkw)
+                logging.info(f"found {len(storm_reports)} storm reports within {max_range}. {storm_reports['significant'].sum()} significant.")
+                storm_rpt_dict[ax] = pd.concat([storm_rpt_dict[ax], storm_reports])
+                logging.info(f"{len(storm_rpt_dict[ax])} total")
                 showkde = True
                 if showkde:
                     w = r_center2D**2 # weight by area (range squared)
@@ -570,7 +572,7 @@ hours_str = " & ".join(sorted(list(set(hours_str))))
 uniq_stormname_years = list(set(stormname_years))
 # sort by year first, then name 
 sorted_storms = sorted(uniq_stormname_years, key=lambda x: tuple(x.split()[::-1]))
-fontsize = "x-small" if len(stormname_years) < 20 else "xx-small"
+fontsize = "xx-small" if len(stormname_years) < 20 else 5
 figplr.suptitle(", ".join(sorted_storms) + "\n" + hours_str, fontsize=fontsize) # Clean title w/o origin place and time
 
 # avoid spiral artifact when pcolor ignores entire columns of nan. pcolor.get_array() does not include nans in PolyCollection.
@@ -582,11 +584,11 @@ for ax in [northax, stormmotionax, windshearax]:
     ax.pcolor(np.radians(theta2d), r2d, fillmean, cmap=cmap,norm=colors.BoundaryNorm(levels,cmap.N))
     lines, labels = add_rgrid(ax)
     # don't use logging here. don't want timestamp
-    print(f"heading and range of maximum {fill}:", end="")
+    print(f"heading and range of maximum {fill}:")
     print(fillmean.isel(fillmean.argmax(...)))
 
     if line:
-        pc = ax.contour(np.radians(theta_center1D), range_center1D, (np.mean(linedict[ax], axis=0)).T, contour_levels, colors="black", alpha=linecontour_alpha)
+        pc = ax.contour(np.radians(theta_center1D), range_center1D, (np.mean(linedict[ax], axis=0)).T, lcontour_levels, colors="black", alpha=linecontour_alpha)
         ax.clabel(pc, fontsize=linecontour_fontsize, fmt='%.0f')
     if barb:
         ax.barbs(np.radians(theta_center2D.ravel()[ii]), r_center2D.ravel()[ii], *xr_list_mean(barbdict[ax]).stack(gate=["azimuth","range"]).isel(gate=ii), **barbkwdict)
@@ -602,13 +604,18 @@ for ax in [northax, stormmotionax, windshearax]:
     for event_type, xrpts in storm_rpt_dict[ax].groupby("event_type"):
         show_storm_rpt_scatter = False
         if show_storm_rpt_scatter:
-            pc = ax.scatter(np.radians(xrpts["heading"]), xrpts["range"], alpha=0.8, **kwdict[event_type])
+            pc = ax.scatter(np.radians(xrpts["heading"]), xrpts["range"], alpha=0.9, **kwdict[event_type])
             handles.append(pc) # PathCollection element for legend
         lsr_heading = xrpts["heading"].values * units.deg 
         lsr_range  = xrpts["range"].values * units.km
-        n = xrpts.size
-        labels.append(f"{event_type} ({n})") # append total number of events to legend label
-        logging.info(f"centroid of {ax} coord {event_type} reports {spc.centroid_polar(lsr_heading, lsr_range)}")
+
+
+        nrpts = len(xrpts)
+        labels.append(f"{event_type} ({nrpts})") # append total number of events to legend label
+        logging.info(f"centroid of {ax} coord {nrpts} {event_type} reports\n{spc.centroid_polar(lsr_heading, lsr_range)}")
+        if nrpts < 3:
+            logging.info(f"{nrpts} {event_type} reports not enough for kde (require at least 3)")
+            continue
         # Try to plot kde
         rptx = lsr_range * np.cos(lsr_heading)
         rpty = lsr_range * np.sin(lsr_heading)
@@ -619,27 +626,32 @@ for ax in [northax, stormmotionax, windshearax]:
         dist_from_center = pd.DataFrame(np.sqrt(X**2 + Y**2))
         positions = np.vstack([X.ravel(), Y.ravel()])
         weights=None
-        if event_type == "torn": 
-            weights = xrpts.mag + 1 # F-scale plus one. (F-sum from McCaul, 1991)
-            event_type = "F-sum"
+        if event_type == "torn":
+            weights = xrpts["mag"].fillna(value=0) + 1 # F-scale plus one. (F-sum from McCaul, 1991) # unknown tornado F-scales exist.
+            event_type = f"torn F-sum"
         kernel = gaussian_kde(np.vstack([rptx,rpty]), weights=weights)
         Z = np.reshape(kernel(positions).T, X.shape)
         time_window_sum = len(stormlist) * 2 * spc_td.total_seconds()*units.seconds
         time_window_sum = time_window_sum.to("days")
-        Z = xarray.DataArray(n * Z  / lsr_range.units**2 / time_window_sum) # histogram2d_weighted expects a DataArray with units.
+        Z = xarray.DataArray(nrpts * Z  / lsr_range.units**2 / time_window_sum) # histogram2d_weighted expects a DataArray with units.
         # convert Cartesian grid Z to polar coordinates
         pkde = spc.histogram2d_weighted(az, dist_from_center, azbins, rbins, Z)
         pkde["azimuth"] = np.radians(pkde.azimuth) # Polar Axes are in radians not degrees.
-        polarc = pkde.plot.contour(x="azimuth",y="range", ax=ax, levels=[0.001, 0.002, 0.004, 0.008, 0.016, 0.032], colors="black", 
-                linewidths=0.5, add_colorbar=True, cbar_kwargs={"shrink":0.75,"pad":0.09})
+        kdelevels = [0.00002, 0.00004, 0.00008, 0.00016, 0.00032, 0.00064]
+        if Z.max() > kdelevels[0] * units.parse_expression("1/km**2/day"): # avoid ZeroDivisionError with add_colorbar
+            logging.info(f"max density {Z.max()} plotting kde")
+            polarc = pkde.plot.contour(x="azimuth",y="range", ax=ax, levels=kdelevels, colors="black", 
+                    linewidths=0.5, add_colorbar=True, cbar_kwargs={"shrink":0.75,"pad":0.09})
 
-        cb = polarc.colorbar
-        cb.formatter.set_powerlimits((-2,2))
-        cb.update_ticks()
-        cb.ax.yaxis.offsetText.set(size='xx-small')
-        cb.ax.yaxis.offsetText.set_horizontalalignment("left")
-        cb.set_label(event_type + " " + cb.ax.yaxis.get_label().get_text(),fontsize="xx-small")
-        cb.ax.tick_params(labelsize='xx-small')
+            cb = polarc.colorbar
+            cb.formatter.set_powerlimits((-2,2))
+            cb.update_ticks()
+            cb.ax.yaxis.offsetText.set(size='xx-small')
+            cb.ax.yaxis.offsetText.set_horizontalalignment("left")
+            cb.set_label(event_type + " " + cb.ax.yaxis.get_label().get_text(),fontsize="xx-small")
+            cb.ax.tick_params(labelsize='xx-small')
+        else:
+            logging.info(f"max density {Z.max()} <= first kde level {kdelevels[0]}. skipping kdeplot")
     
         ax.set_xlabel('')
         ax.set_ylabel('')
@@ -648,8 +660,8 @@ for ax in [northax, stormmotionax, windshearax]:
         rho_limit = 600*units.km
         w[r_center2D*units.km >= rho_limit] = 0.
         rho_limited = corr(fillmean, pkde, w) 
-        logging.info(f"{fill} {event_type} r={rho:.3f} r{rho_limit:~}={rho_limited:.3f}")
-        ax.set_title(f"{desc(data)} {event_type} r={rho:.3f} r$_{{{rho_limit:~}}}$={rho_limited:.3f}", fontsize="xx-small")
+        logging.info(f"{fill} {nrpts} {event_type} r={rho:.3f} r{rho_limit:~}={rho_limited:.3f}")
+        ax.set_title(f"{desc(data)} {nrpts} {event_type} r={rho:.3f} r{rho_limit:~}={rho_limited:.3f}", fontsize=4, wrap=True)
     if ax == northax: # add storm report legend and quiver scale to north axes
         if quiver:
             powerof10 =10**int(np.log10(np.sqrt(quiverdata[0]**2 + quiverdata[1]**2).max().values))
