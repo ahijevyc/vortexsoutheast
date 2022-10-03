@@ -8,7 +8,18 @@ cd /glade/scratch/ahijevyc/trier/VSE
 
 set b=b.csh
 if (-e $b) rm $b
-foreach desc (all_LTC strong_LTC_many_tornadoes_prelandfall weak-to-intermediate_LTC_many_tornadoes_prelandfall no_or_few_tornadoes_prelandfall strong_LTC_many_tornadoes weak-to-intermediate_LTC_many_tornadoes no_or_few_tornadoes tornadoes_well_inland tornadoes_near_coast)
+foreach desc (strong_LTC_many_tornadoes \
+              weak-to-intermediate_LTC_many_tornadoes \
+              no_or_few_tornadoes \
+              strong_LTC_many_tornadoes_prelandfall \
+              weak-to-intermediate_LTC_many_tornadoes_prelandfall \
+              no_or_few_tornadoes_prelandfall \
+              tornadoes_well_inland \
+              tornadoes_near_coast \
+              all_LTC \
+              all_LTC_prelandfall \
+              )
+
     foreach hh (03060912 15182100 0003060912151821)
         foreach filllinebarb (`cat /glade/scratch/ahijevyc/vortexsoutheast/scripts/filllinebarb.txt`)
             set split=($filllinebarb:as,/, ,)
