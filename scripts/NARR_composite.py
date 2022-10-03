@@ -625,21 +625,22 @@ for ax in [northax, stormmotionax, windshearax]:
         az[az < 0] = az[az < 0] + 360 # azbins is 0-360 but az was -180 to +180
         dist_from_center = pd.DataFrame(np.sqrt(X**2 + Y**2))
         positions = np.vstack([X.ravel(), Y.ravel()])
-        weights=None
+        weights=np.ones(nrpts)
         if event_type == "torn":
             weights = xrpts["mag"].fillna(value=0) + 1 # F-scale plus one. (F-sum from McCaul, 1991) # unknown tornado F-scales exist.
             event_type = f"torn F-sum"
         kernel = gaussian_kde(np.vstack([rptx,rpty]), weights=weights)
-        Z = np.reshape(kernel(positions).T, X.shape)
+        kde = np.reshape(kernel(positions).T, X.shape)
         time_window_sum = len(stormlist) * 2 * spc_td.total_seconds()*units.seconds
         time_window_sum = time_window_sum.to("days")
-        Z = xarray.DataArray(nrpts * Z  / lsr_range.units**2 / time_window_sum) # histogram2d_weighted expects a DataArray with units.
-        # convert Cartesian grid Z to polar coordinates
-        pkde = spc.histogram2d_weighted(az, dist_from_center, azbins, rbins, Z)
+        kde = kde * weights.sum() # Multiply kde (a normalized surface with total volume = 1) by the sum of weights (not the count)
+        kde = xarray.DataArray(kde / lsr_range.units**2 / time_window_sum) # histogram2d_weighted expects a DataArray with units.
+        # convert Cartesian grid kde to polar coordinates
+        pkde = spc.histogram2d_weighted(az, dist_from_center, azbins, rbins, kde)
         pkde["azimuth"] = np.radians(pkde.azimuth) # Polar Axes are in radians not degrees.
         kdelevels = [0.00002, 0.00004, 0.00008, 0.00016, 0.00032, 0.00064]
-        if Z.max() > kdelevels[0] * units.parse_expression("1/km**2/day"): # avoid ZeroDivisionError with add_colorbar
-            logging.info(f"max density {Z.max()} plotting kde")
+        if kde.max() > kdelevels[0] * units.parse_expression("1/km**2/day"): # avoid ZeroDivisionError with add_colorbar
+            logging.info(f"max density {kde.max()} plotting kde")
             polarc = pkde.plot.contour(x="azimuth",y="range", ax=ax, levels=kdelevels, colors="black", 
                     linewidths=0.5, add_colorbar=True, cbar_kwargs={"shrink":0.75,"pad":0.09})
 
@@ -651,7 +652,7 @@ for ax in [northax, stormmotionax, windshearax]:
             cb.set_label(event_type + " " + cb.ax.yaxis.get_label().get_text(),fontsize="xx-small")
             cb.ax.tick_params(labelsize='xx-small')
         else:
-            logging.info(f"max density {Z.max()} <= first kde level {kdelevels[0]}. skipping kdeplot")
+            logging.info(f"max density {kde.max()} <= first kde level {kdelevels[0]}. skipping kdeplot")
     
         ax.set_xlabel('')
         ax.set_ylabel('')
