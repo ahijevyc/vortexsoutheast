@@ -294,7 +294,7 @@ for istorm, storm in enumerate(stormlist):
     # ignore 50 and 64 knot rad lines. Keep 0 and 34-knot lines.Yes, there are 0-knot lines. rad is a string 
     trackdf = trackdf[trackdf.rad.astype("float") <= 35] # Gabrielle 2001 atcf bal082001.dat has "35" knot winds, not 34. As a quick-fix, just use 35 as the comparison number.
     stormname_years.append(stormname_year) # used for composite title
-    logging.info(f"storm {stormname_year} {trackdf.valid_time.min()} to {trackdf.valid_time.max()}")
+    logging.info(f"{stormname_year} {trackdf.valid_time.min()} to {trackdf.valid_time.max()} ({trackdf.valid_time.max() - trackdf.valid_time.min()})")
     
 
     # Make sure all times in time list are within the TC track time window.
@@ -320,17 +320,17 @@ for istorm, storm in enumerate(stormlist):
 
     # keep 3hrly valid times
     hourmod3 = trackdf["valid_time"].dt.hour % 3 == 0
-    logging.info(f"dropping {(~hourmod3).sum()} non-3-hrly times")
+    logging.debug(f"dropping {(~hourmod3).sum()} non-3-hrly times")
     trackdf = trackdf[hourmod3]
 
     # Keep time(s) equal to narrtime # TODO: can there be multiple times?
     tracknarrtime = trackdf["valid_time"] == narrtime
-    logging.info(f"dropping {(~tracknarrtime).sum()} times not equal to {narrtime}")
+    logging.debug(f"dropping {(~tracknarrtime).sum()} times not equal to {narrtime}")
     trackdf = trackdf[tracknarrtime]
 
-    assert len(trackdf) == 1, "shouldn't trackdf be length one?"
+    assert len(trackdf) == 1, "Expected trackdf to be one row"
 
-    # Now it is a series
+    # Make one-row DataFrame a Series.
     track = trackdf.squeeze()
     valid_time = track["valid_time"]
     lat1 = track["lat"] * units.degrees_N
@@ -361,6 +361,7 @@ for istorm, storm in enumerate(stormlist):
     storm_report_time_window_str = "storm reports\n"+storm_report_start.strftime('%m/%d %H%M') +' - '+ storm_report_end.strftime('%m/%d %H%M %Z')
     storm_report_window = (all_storm_reports["time"] >= storm_report_start) & (all_storm_reports["time"] < storm_report_end)
     storm_reports = all_storm_reports.loc[storm_report_window].copy() # avoid SettingWithCopyWarning in spc.polarkde by applying .copy()
+    logging.info(f"Found {len(storm_reports)} in {spc_td*2} time window")
 
     if storm_reports.empty:
         storm_report_time_window_str = "no "+storm_report_time_window_str
@@ -449,7 +450,7 @@ for istorm, storm in enumerate(stormlist):
         plt.figure(1) # switch back to polar plots figure
 
     if normalize_by:
-        print(f"normalizing range from TC center by {normalize_by}. {normalize_range_by:.3f}")
+        logging.info(f"normalizing range from TC center by {normalize_by}. {normalize_range_by:.3f}")
         dist_from_center = dist_from_center / normalize_range_by
         supt = supt.set_text(supt.get_text() + f"  1 km here = {1*units.km * normalize_range_by:.3f}")
     
@@ -507,11 +508,12 @@ for istorm, storm in enumerate(stormlist):
             rptkw = dict(normalize_range_by=normalize_range_by)
             # Return DataFrame filtered for max_range with additional "range" and "heading" columns.
             storm_reports = spc.polarplot(lon1, lat1, storm_reports, ax, zero_azimuth=axheading, add_legend = ax == northax, legend_title=storm_report_time_window_str, **rptkw)
-            logging.info(f"found {len(storm_reports)} storm reports within {max_range}. {storm_reports['significant'].sum()} significant.")
             storm_rpt_dict[ax] = pd.concat([storm_rpt_dict[ax], storm_reports])
-            logging.info(f"{len(storm_rpt_dict[ax])} total")
+            if ax is northax:
+                logging.info(f"found {len(storm_reports)} storm reports within {max_range}. {storm_reports['significant'].sum()} significant.")
+                logging.info(f"{len(storm_rpt_dict[ax])} rpts in composite so far")
             showkde = True
-            if showkde:
+            if showkde and len(storm_reports) >= 3:
                 w = r_center2D**2 # weight by area (range squared)
                 rptkde = spc.polarkde(lon1, lat1, storm_reports, ax, azbins, rbins, spc_td, zero_azimuth=axheading, ds=10*units.km, add_colorbar=False, **rptkw) #TODO: avoid additional colorbars pushing axes inward. Can't figure out how to remove them.
                 for event_type in rptkde:
@@ -538,7 +540,7 @@ for istorm, storm in enumerate(stormlist):
     # Save image. 
     plt.savefig(snapshot, dpi=dpi)
     os.system("mogrify -colors 128 "+snapshot) # severe drop in quality with 64 colors
-    logging.info(f'created {os.path.realpath(snapshot)} {istorm}/{len(stormlist)}')
+    logging.info(f'created {os.path.realpath(snapshot)} {istorm+1}/{len(stormlist)}')
 
     # Clear all axes. We have lists of storm report collections for later.
     for ax in axes:
@@ -548,19 +550,21 @@ for istorm, storm in enumerate(stormlist):
         ax.set_theta_zero_location("N")
         ax.set_theta_direction(-1)
 
-# Composite
+
+##### Composite #####
 
 if len(narr_files) == 0:
-    print("no NARR files to composite")
+    logging.info("no NARR files to composite")
     sys.exit(0)
 
 logging.debug(f"{len(stormlist)} storm and times {stormlist}")
-ncols = 5 
+# Put storm list in columns for fine print
+stormlist_ncols = 5 
 stormlist_fineprint = f"{len(stormlist)} times\n"
 if len(stormlist) < 120:
     for i,s in enumerate(stormlist):
         stormlist_fineprint += f" {s.rstrip().center(25)}"
-        if i % ncols == ncols-1:
+        if i % stormlist_ncols == stormlist_ncols-1:
             stormlist_fineprint += "\n"
 fineprint.set_text(fineprint_string + "\n" + stormlist_fineprint.rstrip() + f"\ncreated {datetime.datetime.now()}")
 
@@ -616,8 +620,9 @@ for ax in [northax, stormmotionax, windshearax]:
         labels.append(f"{event_type} ({nrpts})") # append total number of events to legend label
         logging.info(f"centroid of {ax} coord {nrpts} {event_type} reports\n{spc.centroid_polar(lsr_heading, lsr_range)}")
         if nrpts < 3:
-            logging.info(f"{nrpts} {event_type} reports not enough for kde (require at least 3)")
-            continue
+            if ax is northax:
+                logging.info(f"{nrpts} {event_type} reports not enough for kde (require at least 3)")
+            continue # continue for all ax, regardless of whether ax is northax
         # Try to plot kde
         rptx = lsr_range * np.cos(lsr_heading)
         rpty = lsr_range * np.sin(lsr_heading)
