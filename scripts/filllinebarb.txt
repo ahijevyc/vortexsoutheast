@@ -30,6 +30,9 @@ speed700hPa/_/wind700hPa
 srh/_/shr10m_3000m
 stp/_/shr10m_3000m
 stp/sbcape/shr10m_3000m
+tctp2014/sbcape/shr10m_1000m
+tctp2014/sbcape/shr10m_3000m
+tctp2014/sbcape/shr10m_700hPa
 tctp2014/srh/shr10m_1000m
 tctp2014/srh/shr10m_3000m
 tctp2014/srh/shr10m_700hPa
