@@ -112,6 +112,60 @@ def xr_list_mean(x):
     # mean of list of xarray DataArrays
     return xarray.concat(x, dim="storm").mean(dim="storm")
 
+def get_normalize_range_by(track, normalize_by):
+    logging.debug(track)
+    if normalize_by == 'r34':
+        if track["rad"] == '34':
+            value = track[['rad1','rad2','rad3','rad4']].max()
+            logging.info(value)
+            if np.isnan(value):
+                value = 50.
+                logging.info(f"r34 is nan. Normalize by {value} nautical miles")
+        else:
+            logging.info(f'Unexpected track rad value {track["rad"]}')
+            sys.exit(1)
+    elif normalize_by == 'Vt500km':
+        # Had targetdir set to "." but it grabbed and converted NARR grb in the current directory
+        data = vectordata("wind10m", track["valid_time"], targetdir=workdir)
+        lon, lat = data.metpy.longitude, data.metpy.latitude
+        u, v = data
+        derived_vitals_dict = atcf.derived_winds(u, v, xarray.full_like(u, 1013.)*units('hPa'), lon, lat, track)
+        storm_size_S = derived_vitals_dict["storm_size_S"]
+        if np.isnan(storm_size_S):
+            logging.info("storm_size_S is nan. This may be for Isaac 2012, which has artificial lat/lon extension, but no vmax")
+            storm_size_S = track["storm_size_S"]
+        if storm_size_S < 0.25:
+            logging.info(f"storm_size_S is too small {storm_size_S}. Setting to 0.25")
+            storm_size_S = 0.25
+        logging.info(f'normalizing range by Knaff_Zehr S. {track["lat"]:.2f}N Vmax {track["vmax"]:.2f}')
+        logging.debug(f'Vmax from NARR (not used) {derived_vitals_dict["raw_vmax"]}')
+        logging.info(f'Vt_500km={derived_vitals_dict["Vt_500km"]:.2f}  S={storm_size_S:.2f}')
+        # Originally took inverse of storm_size_S, but that is wrong. If you have a storm 10% larger than normal, 
+        # you want to pull everything 10% closer to the origin, so it matches up with other storms that are normal sized.
+        # The radial distance is divided by this value.
+        assert storm_size_S != 0, "storm_size_S can't be zero {track}"
+        if np.isnan(storm_size_S):
+            logging.info("value to normalize range by can't be nan")
+            pdb.set_trace()
+        return storm_size_S
+    else:
+        value = track[normalize_by]
+        if np.isnan(value):
+            if normalize_by == 'rmw':
+                value = 25. # 25 nautical miles is default rmw in aswip.
+            else:
+                logging.error(f"get_normalize_range_by(): Null value for {normalize_by}. Not sure how to define")
+                sys.exit(1)
+
+
+    value = value * units["nautical_mile"].to("km")
+
+
+    assert value != 0, "value can't be zero {track}"
+    assert not np.isnan(value), "value can't be nan {track}"
+
+    return value
+
 
 # =============Arguments===================
 parser = argparse.ArgumentParser(description = "Plot NARR", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -288,6 +342,11 @@ for istorm, storm in enumerate(stormlist):
     snapshot = os.path.join(snapshotdir, os.path.basename(bname) + f'.{valid_time.strftime("%Y%m%d%H")}.{lat1.m:04.1f}N{lon1.m:06.1f}E{ext}')
     supt = figplr.suptitle(stormname_year + "\n" + origin_place_time, wrap=True, fontsize="small")
 
+    normalize_range_by = None
+    if normalize_by:
+        normalize_range_by = get_normalize_range_by(trackdf, track.name, normalize_by) 
+        bname, ext = os.path.splitext(snapshot)
+        snapshot = bname + ".normalize_by_" + normalize_by + ext
     # Used to skip this file If png already exists but we don't want to have incomplete composite.
     # Finish it if you start it. 
     if not clobber and os.path.isfile(snapshot):
