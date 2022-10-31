@@ -265,7 +265,9 @@ def main():
             odf = pd.concat([odf,pd.DataFrame([od])], ignore_index=True) # Avoid FutureWarning about append. Keep od as dictionary (don't convert to DataFrame) 
     logging.info(f"move units from values to column names")
     odf = move_units_from_values_to_column_names(odf)
-    odir = os.path.join(os.path.dirname(ifile), "../data")  # output to parent directory under data/.
+    odir = os.path.join(os.path.dirname(ifile), "../output")  # output directory 
+    if not os.path.exists(odir):
+        os.mkdir(odir)
     path, ext = os.path.splitext(os.path.basename(ifile))
     ocsv = os.path.join(odir, path+".data.csv")
     odf.set_index(["time","station","sounding type"]).to_csv(ocsv)
