@@ -20,7 +20,7 @@ foreach desc (strong_LTC_many_tornadoes \
               all_LTC_prelandfall \
               )
 
-    foreach hh (03060912 15182100 0003060912151821)
+    foreach hh (0003 0609 1215 1821 03060912 15182100 0003060912151821)
         foreach filllinebarb (`cat /glade/scratch/ahijevyc/vortexsoutheast/scripts/filllinebarb.txt`)
             set split=($filllinebarb:as,/, ,)
             set fill=$split[1]

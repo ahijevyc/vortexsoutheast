@@ -172,7 +172,7 @@ logging.debug(args)
 if args.ofile:
     ofile = os.path.realpath(args.ofile)
 else:
-    ofile = "./"+".".join([x for x in [fill, line, barb, quiver] if x]) + '.composite.png'
+    ofile = "./"+".".join([x for x in [fill, line, barb, quiver] if x]) + '.png'
 if netcdf:
     netcdf = os.path.realpath(netcdf)
 
@@ -341,7 +341,9 @@ for istorm, storm in enumerate(stormlist):
     origin_place_time = f'({lat1.m:.1f}$\degree$N, {lon1.m:.1f}$\degree$E) {valid_time.strftime("%Y-%m-%d %H UTC")}'
     logging.debug(f'({lat1:~}, {lon1:~}) {valid_time.strftime("%Y-%m-%d %H UTC")}')
 
-    snapshot = os.path.dirname(ofile) + "/" + fill + "." + valid_time.strftime("%Y%m%d%H") + f".{lat1.m:04.1f}N{lon1.m:06.1f}E.png"
+    # tack on valid_time and TC center coordinates.
+    bname, ext = os.path.splitext(ofile)
+    snapshot = f'{bname}.{valid_time.strftime("%Y%m%d%H")}.{lat1.m:04.1f}N{lon1.m:06.1f}E{ext}'
     supt = figplr.suptitle(stormname_year + "\n" + origin_place_time, wrap=True, fontsize="small")
 
     normalize_range_by = None
@@ -675,7 +677,7 @@ for ax in [northax, stormmotionax, windshearax]:
         rho_limited = corr(fillmean, pkde, w) 
         logging.info(f"{fill} {nrpts} {event_type} r={rho:.3f} r{rho_limit:~}={rho_limited:.3f}")
         ax.set_title(f"{desc(data)} {nrpts} {event_type} r={rho:.3f} r{rho_limit:~}={rho_limited:.3f}", fontsize=4, wrap=True)
-    if ax == northax: # add storm report legend and quiver scale to north axes
+    if ax == northax: # add quiver scale to north axes
         if quiver:
             powerof10 =10**int(np.log10(np.sqrt(quiverdata[0]**2 + quiverdata[1]**2).max().values))
             ax.quiverkey(polarq, 0.1, -0.03, powerof10, f"{powerof10} {quiver_values.metpy.units:~}", labelpos='S', fontproperties=dict(size='xx-small'))
