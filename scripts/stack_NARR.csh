@@ -12,8 +12,9 @@ cd /glade/scratch/ahijevyc/trier/VSE/nc
 
 set ps=(100 125 150 175 200 225 250 275 300 350 400 450 500 550 600 650 700 750 800 825 850 875 900 925 950 975 1000)
 
+set echo
 #foreach desc (all_LTC)
-foreach desc (all_LTC strong_LTC_many_tornadoes_prelandfall weak-to-intermediate_LTC_many_tornadoes_prelandfall no_or_few_tornadoes_prelandfall strong_LTC_many_tornadoes weak-to-intermediate_LTC_many_tornadoes no_or_few_tornadoes tornadoes_well_inland tornadoes_near_coast)
+foreach desc (strong_LTC_many_tornadoes_prelandfall weak-to-intermediate_LTC_many_tornadoes_prelandfall no_or_few_tornadoes_prelandfall strong_LTC_many_tornadoes weak-to-intermediate_LTC_many_tornadoes no_or_few_tornadoes tornadoes_well_inland tornadoes_near_coast all_LTC )
     foreach f (u v sh hgt temp)
     #foreach f (u)
 
@@ -27,17 +28,16 @@ foreach desc (all_LTC strong_LTC_many_tornadoes_prelandfall weak-to-intermediate
                 continue
             endif
             foreach p ($ps)
-                set p=${p}hPa
                 # define new vertical dimension
-                ncap2 -s 'defdim("lv_ISBL0",1);' -O $desc.$f$p.$t.nc $desc.$f$p.$t.x.nc
+                ncap2 -s 'defdim("lv_ISBL0",1);' -O $desc.$f${p}hPa.$t.nc $desc.$f${p}hPa.$t.x.nc
                 # rename field name. Remove pressure part
-                ncrename -v $f$p,$f -O $desc.$f$p.$t.x.nc $desc.$f$p.$t.x.nc
+                ncrename -v $f${p}hPa,$f -v wind${p}hPa,wind -O $desc.$f${p}hPa.$t.x.nc $desc.$f${p}hPa.$t.x.nc
                 # Define vertical coordinate 
-                ncap2 -s "lv_ISBL0[lv_ISBL0]=$p;" -O $desc.$f$p.$t.x.nc $desc.$f$p.$t.x.nc
+                ncap2 -s "lv_ISBL0[lv_ISBL0]=$p;" -O $desc.$f${p}hPa.$t.x.nc $desc.$f${p}hPa.$t.x.nc
                 # metadata
-                ncap2 -s 'lv_ISBL0@units="hPa";lv_ISBL0@long_name="isobaric level";' -O $desc.$f$p.$t.x.nc $desc.$f$p.$t.x.nc
+                ncap2 -s 'lv_ISBL0@units="hPa";lv_ISBL0@long_name="isobaric level";' -O $desc.$f${p}hPa.$t.x.nc $desc.$f${p}hPa.$t.x.nc
                 # add vertical dimension to field. TODO: don't make a record dimension
-                ncecat -u lv_ISBL0 -O $desc.$f$p.$t.x.nc $desc.$f$p.$t.x.nc
+                ncecat -u lv_ISBL0 -O $desc.$f${p}hPa.$t.x.nc $desc.$f${p}hPa.$t.x.nc
             end
 
             ncrcat -O\
