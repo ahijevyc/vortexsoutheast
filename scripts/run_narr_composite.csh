@@ -28,7 +28,7 @@ set CM1=CM1_input_fields.txt
 if (-e $CM1) rm $CM1
 foreach f (u v sh hgt temp)
     foreach p (100 125 150 175 200 225 250 275 300 350 400 450 500 550 600 650 700 750 800 825 850 875 900 925 950 975 1000)
-        echo $f$p/_/wind$p >> $CM1
+        echo $f${p}hPa/_/wind${p}hPa >> $CM1
     end
 end
 
@@ -36,8 +36,8 @@ end
 # You don't need to change --ofile and --netcdf arguments yourself. 
 
 
-foreach filllinebarb (`cat /glade/scratch/ahijevyc/vortexsoutheast/scripts/filllinebarb.txt`)
-#foreach filllinebarb (`cat $CM1`)
+#foreach filllinebarb (`cat /glade/scratch/ahijevyc/vortexsoutheast/scripts/filllinebarb.txt`)
+foreach filllinebarb (`cat $CM1`)
 
     
     # substitution operator. Turn slashes to spaces so array can be set.

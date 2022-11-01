@@ -17,8 +17,8 @@ foreach desc (all_LTC strong_LTC_many_tornadoes_prelandfall weak-to-intermediate
     foreach f (u v sh hgt temp)
     #foreach f (u)
 
-        #foreach t (0003z 0609z 1215z 1821z)
-        foreach t (00z 03z 06z 09z 12z 15z 18z 21z)
+        foreach t (0003z 0609z 1215z 1821z)
+        #foreach t (00z 03z 06z 09z 12z 15z 18z 21z)
         #foreach t (0003z )
 
             set ofile=$desc.${f}.$t.nc
@@ -27,6 +27,7 @@ foreach desc (all_LTC strong_LTC_many_tornadoes_prelandfall weak-to-intermediate
                 continue
             endif
             foreach p ($ps)
+                set p=${p}hPa
                 # define new vertical dimension
                 ncap2 -s 'defdim("lv_ISBL0",1);' -O $desc.$f$p.$t.nc $desc.$f$p.$t.x.nc
                 # rename field name. Remove pressure part
@@ -40,33 +41,33 @@ foreach desc (all_LTC strong_LTC_many_tornadoes_prelandfall weak-to-intermediate
             end
 
             ncrcat -O\
-                   $desc.${f}1000.$t.x.nc\
-                   $desc.${f}975.$t.x.nc\
-                   $desc.${f}950.$t.x.nc\
-                   $desc.${f}925.$t.x.nc\
-                   $desc.${f}900.$t.x.nc\
-                   $desc.${f}875.$t.x.nc\
-                   $desc.${f}850.$t.x.nc\
-                   $desc.${f}825.$t.x.nc\
-                   $desc.${f}800.$t.x.nc\
-                   $desc.${f}750.$t.x.nc\
-                   $desc.${f}700.$t.x.nc\
-                   $desc.${f}650.$t.x.nc\
-                   $desc.${f}600.$t.x.nc\
-                   $desc.${f}550.$t.x.nc\
-                   $desc.${f}500.$t.x.nc\
-                   $desc.${f}450.$t.x.nc\
-                   $desc.${f}400.$t.x.nc\
-                   $desc.${f}350.$t.x.nc\
-                   $desc.${f}300.$t.x.nc\
-                   $desc.${f}275.$t.x.nc\
-                   $desc.${f}250.$t.x.nc\
-                   $desc.${f}225.$t.x.nc\
-                   $desc.${f}200.$t.x.nc\
-                   $desc.${f}175.$t.x.nc\
-                   $desc.${f}150.$t.x.nc\
-                   $desc.${f}125.$t.x.nc\
-                   $desc.${f}100.$t.x.nc\
+                   $desc.${f}1000hPa.$t.x.nc\
+                   $desc.${f}975hPa.$t.x.nc\
+                   $desc.${f}950hPa.$t.x.nc\
+                   $desc.${f}925hPa.$t.x.nc\
+                   $desc.${f}900hPa.$t.x.nc\
+                   $desc.${f}875hPa.$t.x.nc\
+                   $desc.${f}850hPa.$t.x.nc\
+                   $desc.${f}825hPa.$t.x.nc\
+                   $desc.${f}800hPa.$t.x.nc\
+                   $desc.${f}750hPa.$t.x.nc\
+                   $desc.${f}700hPa.$t.x.nc\
+                   $desc.${f}650hPa.$t.x.nc\
+                   $desc.${f}600hPa.$t.x.nc\
+                   $desc.${f}550hPa.$t.x.nc\
+                   $desc.${f}500hPa.$t.x.nc\
+                   $desc.${f}450hPa.$t.x.nc\
+                   $desc.${f}400hPa.$t.x.nc\
+                   $desc.${f}350hPa.$t.x.nc\
+                   $desc.${f}300hPa.$t.x.nc\
+                   $desc.${f}275hPa.$t.x.nc\
+                   $desc.${f}250hPa.$t.x.nc\
+                   $desc.${f}225hPa.$t.x.nc\
+                   $desc.${f}200hPa.$t.x.nc\
+                   $desc.${f}175hPa.$t.x.nc\
+                   $desc.${f}150hPa.$t.x.nc\
+                   $desc.${f}125hPa.$t.x.nc\
+                   $desc.${f}100hPa.$t.x.nc\
                    $ofile
             echo $ofile
         end

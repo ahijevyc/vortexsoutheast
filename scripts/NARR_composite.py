@@ -465,7 +465,6 @@ for istorm, storm in enumerate(stormlist):
             file_ncl=narr.get(valid_time, narrtype=narr.narr3D, targetdir=workdir), debug=debug)
     wind_shear_heading = TCFlow["wind_shear_heading"] * units.degrees
     wind_shear_mag   = TCFlow["wind_shear_speed"] * units.parse_expression("m/s")
-    wind_shear_values = roll_rotate_sel(values, wind_shear_heading) 
 
     ax_headings = {
             northax      :0 * units.deg, # north points up
@@ -483,14 +482,14 @@ for istorm, storm in enumerate(stormlist):
         ax.grid(False) #Auto-removal of grids by pcolor() and pcolormesh() is deprecated since 3.5 and will be removed two minor releases later; please call grid(False)
 
         rotated_values = roll_rotate_sel(values, axheading)
-        polarf = ax.pcolor(np.radians(theta2d), r2d, uvsel(rotated_values), cmap=cmap,norm=colors.BoundaryNorm(levels,cmap.N)) # tried DataArray.plot.imshow and pcolormesh, tried 1D coordinates.
-        filldict[ax].append(uvsel(rotated_values))
+        polarf = ax.pcolor(np.radians(theta2d), r2d, rotated_values, cmap=cmap,norm=colors.BoundaryNorm(levels,cmap.N)) # tried DataArray.plot.imshow and pcolormesh, tried 1D coordinates.
+        filldict[ax].append(rotated_values)
         if line: 
             linecontour_values = spc.histogram2d_weighted(bearing, dist_from_center, azbins, rbins, linecontourdata) # Don't apply uvsel() here; we need values for storm motion and wind shear
             linecontour_values = roll_rotate_sel(linecontour_values, axheading)
-            polarc = ax.contour(np.radians(theta_center1D), range_center1D, uvsel(linecontour_values).T, lcontour_levels, colors="black", alpha=linecontour_alpha)
+            polarc = ax.contour(np.radians(theta_center1D), range_center1D, linecontour_values.T, lcontour_levels, colors="black", alpha=linecontour_alpha)
             ax.clabel(polarc, fontsize=linecontour_fontsize, fmt='%.0f')
-            linedict[ax].append(uvsel(linecontour_values))
+            linedict[ax].append(linecontour_values)
         if barb:
             barb_values = spc.histogram2d_weighted(bearing, dist_from_center, azbins, rbins, barbdata)
             barb_values = roll_rotate_sel(barb_values, axheading) 
@@ -519,7 +518,7 @@ for istorm, storm in enumerate(stormlist):
                 w = r_center2D**2 # weight by area (range squared)
                 rptkde = spc.polarkde(lon1, lat1, storm_reports, ax, azbins, rbins, spc_td, zero_azimuth=axheading, ds=10*units.km, add_colorbar=False, **rptkw) #TODO: avoid additional colorbars pushing axes inward. Can't figure out how to remove them.
                 for event_type in rptkde:
-                    rho = corr(uvsel(rotated_values), rptkde[event_type], w)
+                    rho = corr(rotated_values, rptkde[event_type], w)
                     logging.info(f"{fill} {event_type} r={rho}")
                     ax.set_title(f"{desc(data)} {event_type} r={rho:.3f}", fontsize="xx-small")
 
