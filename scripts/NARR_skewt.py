@@ -1,5 +1,7 @@
+from atcf import dist_bearing
 import argparse
 import datetime
+import ibtracs
 import logging
 import matplotlib.pyplot as plt
 import matplotlib.transforms as transforms
@@ -40,7 +42,7 @@ def main():
 
     logging.debug(args)
 
-    df = pd.read_csv(ifile, names=["itime","place","station"], parse_dates=["itime"])
+    df = pd.read_csv(ifile, names=["storm","itime","place","station"], parse_dates=["itime"])
     assert set(df["place"].unique()) == set(["upshr","dnshr"]), "expected 2 places: upshr and dnshr"
 
     odf = pd.DataFrame()
@@ -48,7 +50,14 @@ def main():
     fig = plt.figure(figsize=(8,8))
 
     for index, row in df.iterrows():
+        storm = row.storm
+        year = storm[-4:]
+        trackdf, best_track_file = ibtracs.get_atcf(storm[:-4], year, basin="NA") 
+        extension = ibtracs.extension(storm[:-4], year) # TODO: fix this extension kludge
+        trackdf = pd.concat([trackdf, extension], axis="index", sort=False, ignore_index=True)
         itime = row.itime
+        TC = trackdf.set_index("valid_time")[["lon","lat"]].drop_duplicates()
+        TC = TC.resample('H').interpolate(method="linear").loc[itime]
         station = row.station
         cache = f"/glade/scratch/ahijevyc/wyocache/{itime.strftime('%Y%m%dT%H%M')}{station}.csv"
         if os.path.exists(cache):
@@ -63,6 +72,7 @@ def main():
         obs = pandas_dataframe_to_unit_arrays(obs, column_units=udict)
         slon = obs["longitude"][0]
         slat = obs["latitude"][0]
+        distance_from_TCcenter, bearing_from_TCcenter = dist_bearing(TC.lon*units.deg, TC.lat*units.deg, slon, slat)
         sigps = [1000, 925, 850, 700, 500, 400, 300, 200, 100] * units.hPa
         od = {}
         for stype in ["NARR", "obs"]:
@@ -211,6 +221,8 @@ def main():
             #od["metpy mlcape"] = mlcape
             #od["metpy mlcin"] = mlcin
             od["sounding list"] = ifile
+            od["distance_from_TCcenter"] = distance_from_TCcenter
+            od["bearing_from_TCcenter"] = bearing_from_TCcenter
 
             skew.plot(p, profTv, 'k', linewidth=1.5, linestyle="dashed")
 
@@ -263,6 +275,7 @@ def main():
             logging.info(f"made {os.path.realpath(ofile)}")
             fig.clear()
             odf = pd.concat([odf,pd.DataFrame([od])], ignore_index=True) # Avoid FutureWarning about append. Keep od as dictionary (don't convert to DataFrame) 
+
     logging.info(f"move units from values to column names")
     odf = move_units_from_values_to_column_names(odf)
     odir = os.path.join(os.path.dirname(ifile), "../output")  # output directory 
