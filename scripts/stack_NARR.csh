@@ -12,9 +12,17 @@ cd /glade/scratch/ahijevyc/trier/VSE/nc
 
 set ps=(100 125 150 175 200 225 250 275 300 350 400 450 500 550 600 650 700 750 800 825 850 875 900 925 950 975 1000)
 
-set echo
 #foreach desc (all_LTC)
-foreach desc (strong_LTC_many_tornadoes_prelandfall weak-to-intermediate_LTC_many_tornadoes_prelandfall no_or_few_tornadoes_prelandfall strong_LTC_many_tornadoes weak-to-intermediate_LTC_many_tornadoes no_or_few_tornadoes tornadoes_well_inland tornadoes_near_coast all_LTC )
+foreach desc (strong_LTC_many_tornadoes_prelandfall \
+              weak-to-intermediate_LTC_many_tornadoes_prelandfall \
+              no_or_few_tornadoes_prelandfall \
+              strong_LTC_many_tornadoes \
+              weak-to-intermediate_LTC_many_tornadoes \
+              no_or_few_tornadoes \
+              tornadoes_well_inland \
+              tornadoes_near_coast \
+              all_LTC \
+              all_LTC_prelandfall )
     foreach f (u v sh hgt temp)
     #foreach f (u)
 
@@ -69,6 +77,7 @@ foreach desc (strong_LTC_many_tornadoes_prelandfall weak-to-intermediate_LTC_man
                    $desc.${f}125hPa.$t.x.nc\
                    $desc.${f}100hPa.$t.x.nc\
                    $ofile
+            if ($status == 0) rm $desc.${f}[0-9]*[0-9]hPa.$t.x.nc
             echo $ofile
         end
     end

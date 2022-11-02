@@ -36,8 +36,7 @@ end
 # You don't need to change --ofile and --netcdf arguments yourself. 
 
 
-#foreach filllinebarb (`cat /glade/scratch/ahijevyc/vortexsoutheast/scripts/filllinebarb.txt`)
-foreach filllinebarb (`cat $CM1`)
+foreach filllinebarb (`cat /glade/scratch/ahijevyc/vortexsoutheast/scripts/filllinebarb.txt` `cat $CM1`)
 
     
     # substitution operator. Turn slashes to spaces so array can be set.
