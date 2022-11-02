@@ -27,7 +27,7 @@ Weak LTCs, few or no tornadoes:
 1.    Dennis99; upshr GSO(36.08,-79.50) 9/5/00z, dnshr WAL(37.93, -75.48) 9/5/00z
 2.    Hanna02; upshr LCH(30.11,-93.21) 9/14/12z, dnshr BMX(33.16, -86.76) 9/14/12z
 3.    Claudette03; upshr DRT(29.36,-100.91) 7/15/18z, dnshr CRP(27.76,-97.50) 7/16/00z
-4.    Isabelle03; upshr CHS(32.90, -80.03) 9/19/00z, dnshr WAL(37.93, -75.48) 9/19/00z
+4.    Isabel03; upshr CHS(32.90, -80.03) 9/19/00z, dnshr WAL(37.93, -75.48) 9/19/00z
 5.    Gordon18; upshr LZK(34.83, -92.27) 9/6/00z, dnshr BMX(33.16, -86.76) 9/6/00z
 6.    Grace03; upshr CRP(27.76, -97.50) 9/1/00z, dnshr LCH(30.11,-93.21) 9/1/00z
 7.    Arlene05; upshr LCH(30.11, -93.21) 6/12/00z, dnshr FFC(33.36, -84.56) 6/12/00z
