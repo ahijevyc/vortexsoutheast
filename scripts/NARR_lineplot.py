@@ -18,10 +18,12 @@ parser.add_argument('--desc', type=str, default="tornadoes_near_coast", choices=
 parser.add_argument('field', type=str, default="mlcape", help='NARR field')
 parser.add_argument('--clobber', action="store_true", help='overwrite old file')
 parser.add_argument('--coord', type=str, choices=["north", "storm motion", "wind shear"], default = "north", help='coordinate system. fields rotated so that this vector points up')
+parser.add_argument('--dpi', type=int, default = 120, help='output resolution in dots per inch')
 parser.add_argument('--idir', type=str, default = "/glade/scratch/ahijevyc/trier/VSE/nc", help='input directory')
 parser.add_argument('--no-fineprint', action="store_true", help="Don't write additional information at bottom of figure")
-parser.add_argument('--centroid', type=str, default = "shr10_700 max", choices=VSE.centroids(), help='use predetermined list of points defined by coord and centroid')
-parser.add_argument('--points', nargs='+', type=str, default=None, help='label/azimuth/range. azimuth in deg, starting at north and increasing cw. range in km')
+locations = parser.add_mutually_exclusive_group(required=False)
+locations.add_argument('--centroid', type=str, default = "shr10_700 max", choices=VSE.centroids(), help='use predetermined list of locations defined by coord and centroid')
+locations.add_argument('--location', nargs='+', type=str, default=None, help='label/azimuth/range. azimuth in deg, starting at north and increasing cw. range in km')
 parser.add_argument('--twin', type=int, default=3, help='time window in hours')
 args = parser.parse_args()
 
@@ -29,24 +31,22 @@ centroid     = args.centroid
 clobber      = args.clobber
 coord        = args.coord
 desc         = args.desc
+dpi          = args.dpi
 field        = args.field
 idir         = args.idir 
 no_fineprint = args.no_fineprint
-points       = args.points
+location     = args.location
 twin         = args.twin
 
 level = logging.DEBUG if args.debug else logging.INFO
 logging.basicConfig(format='%(asctime)s - %(message)s', level=level)
 logging.debug(args)
 
-if points and centroid:
-    logging.error("found points and centroid. Can't have both.")
-    sys.exit(1)
 if centroid:
-    points = VSE.pointlist[coord][centroid]
-point_labels = points
-azimuths  = [ar.split("/")[1].replace("deg","") for ar in points]
-ranges_km = [ar.split("/")[2].replace("km","") for ar in points]
+    location = VSE.pointlist[coord][centroid]
+location_labels = location
+azimuths  = [ar.split("/")[1].replace("deg","") for ar in location]
+ranges_km = [ar.split("/")[2].replace("km","") for ar in location]
 
 
 hour = xarray.DataArray(data=["09z","12z","15z","18z","21z","00z","03z","06z","09z","12z"], coords={"hour":range(-1,9)}, dims="hour", name="hour", attrs={"format":"%Hz"})
@@ -72,8 +72,8 @@ if twin == 6:
     hour.values = ["pre 12-15z", "12-15z", "18-21z", "00-03z", "06-09z","post 06-09z"]
 ds = ds.assign_coords({"hour":hour})
 
-target_azimuths = xarray.DataArray(azimuths, dims=["point"])
-target_ranges  = xarray.DataArray(ranges_km, dims=["point"])
+target_azimuths = xarray.DataArray(azimuths, dims=["location"])
+target_ranges  = xarray.DataArray(ranges_km, dims=["location"])
 
 narrds = ds.sel(range=target_ranges, method="nearest", tolerance=20.)
 narrds = narrds.sel(azimuth=target_azimuths, method="nearest", tolerance=0.5)
@@ -81,7 +81,7 @@ narrds = narrds.sel(coord=coord)
 
 logging.info(narrds.coords)
 
-narrds = narrds.assign_coords(point= point_labels)
+narrds = narrds.assign_coords(location= location_labels)
 
 #narrds['storm'] = narrds.storm.astype(str) # convert object to str (does it help?)
 
@@ -92,7 +92,7 @@ plt.subplots_adjust(bottom=0.18)
 # 95% CIs change due to bootstrapping. (unless seed is set)
 ci, n_boot = 95, 10000
 # tried data=narrds, but ValueError: arrays must all be same length
-ax = sns.lineplot(data=narrds.to_dataframe(), x="hour", y=field, hue="point", ci=ci, n_boot=n_boot, seed=14, ax=ax)
+ax = sns.lineplot(data=narrds.to_dataframe(), x="hour", y=field, hue="location", errorbar=('ci',ci), n_boot=n_boot, seed=14, ax=ax)
 ax.set(xlim=(0.5,hour.size-1.5))
 ax.set(ylabel=f"{field} [{narrds[field].units}]")
 plt.setp(ax.get_legend().get_texts(), fontsize="x-small")
@@ -108,7 +108,7 @@ if no_fineprint:
     fineprint.set_visible(False)
 
 ofile = f"/glade/scratch/ahijevyc/trier/VSE/skewT/{desc}.{coord.replace(' ','_')}.{field}.png"
-plt.savefig(ofile, dpi=120)
+plt.savefig(ofile, dpi=dpi)
 logging.info(f"made {os.path.realpath(ofile)}")
 
 narrds.to_dataframe().sort_values(field)
