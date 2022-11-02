@@ -3,6 +3,7 @@ import datetime
 import logging
 import matplotlib.pyplot as plt
 from metpy.units import units
+from metpy.calc import wind_speed
 import narr
 import numpy as np
 import os
@@ -75,6 +76,9 @@ ds = ds.assign_coords({"hour":hour})
 target_azimuths = xarray.DataArray(azimuths, dims=["location"])
 target_ranges  = xarray.DataArray(ranges_km, dims=["location"])
 
+# Calculate magnitude from u- and v- components.
+if "component" in ds[field].coords:
+    ds[field] = wind_speed(ds[field].sel(component="u"), ds[field].sel(component="v")).metpy.dequantify() # keep units as attribute
 narrds = ds.sel(range=target_ranges, method="nearest", tolerance=20.)
 narrds = narrds.sel(azimuth=target_azimuths, method="nearest", tolerance=0.5)
 narrds = narrds.sel(coord=coord)
@@ -107,7 +111,7 @@ fineprint = plt.annotate(text=fineprint_text, xy=(4,1), xycoords=('figure pixels
 if no_fineprint:
     fineprint.set_visible(False)
 
-ofile = f"/glade/scratch/ahijevyc/trier/VSE/skewT/{desc}.{coord.replace(' ','_')}.{field}.png"
+ofile = f"{idir}/{desc}.{coord.replace(' ','_')}.{field}.png"
 plt.savefig(ofile, dpi=dpi)
 logging.info(f"made {os.path.realpath(ofile)}")
 
