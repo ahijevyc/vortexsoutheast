@@ -14,7 +14,7 @@ LTCs with tornadoes occurring near the coast:
 3. Gabrielle01; upshr TLH(30.45, -84.30) 9/14/18z, dnshr XMR(28.46, -80.55) 9/14/18z
 4. Isidore02; upshr LCH(30.11, -93.21) 9/25/18z, dnshr TLH(30.45, -84.30) 9/25/18z
 5. Floyd99; upshr JAX(30.50, -81.79) 9/15/18z, dnshr MHX(34.78, -76.88) 9/15/18z
-6. Brett99; upshr BRO(25.91, -97.41) 8/22/18z, dnshr CRP(27.76, -97.50) 8/22/18z
+6. Bret99; upshr BRO(25.91, -97.41) 8/22/18z, dnshr CRP(27.76, -97.50) 8/22/18z
 7. Alberto06; upshr TBW(27.70, -82.40) 6/13/12z
 8. Irene11; upshr CHS(32.90, -80.03) 8/27/12z, dnshr WAL(37.93, 75.48) 8/27/12z
 9. Irma17; dnshr JAX(30.50,-81.70) 9/11/00z
