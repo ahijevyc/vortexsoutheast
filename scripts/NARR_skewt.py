@@ -49,12 +49,15 @@ def main():
 
     fig = plt.figure(figsize=(8,8))
 
+    ibtracs_df, ibtracs_file = ibtracs.get_df(basin="NA")
     for index, row in df.iterrows():
         storm = row.storm
         year = storm[-4:]
-        trackdf, best_track_file = ibtracs.get_atcf(storm[:-4], year, basin="NA") 
+        trackdf = ibtracs.this_storm(ibtracs_df, storm[:-4], year)
+        logging.debug("ibtracs.extension")
         extension = ibtracs.extension(storm[:-4], year) # TODO: fix this extension kludge
         trackdf = pd.concat([trackdf, extension], axis="index", sort=False, ignore_index=True)
+        logging.debug("got trackdf")
         itime = row.itime
         TC = trackdf.set_index("valid_time")[["lon","lat"]].drop_duplicates()
         TC = TC.resample('H').interpolate(method="linear").loc[itime]
@@ -89,17 +92,22 @@ def main():
                 od["psfc"] = p.max()
                 od["lcl_pressure"], _ = mpcalc.lcl(p[0], T[0], Td[0])
                 od["pwat"] = mpcalc.precipitable_water(p,Td)
+                # Get rh and rh at 0degC level.
+                relative_humidity = mpcalc.relative_humidity_from_dewpoint(T,Td).to("percent")
+                od["0degC rh"], = interpolate_1d(0*units.parse_expression("degC"), T, relative_humidity)
                 lon, lat  = slon, slat
-                for sigp in sigps:
-                    T0,Td0 = np.nan,np.nan
-                    if p.max() >= sigp and p.min() <= sigp: 
-                        z, T0, Td0 = interpolate_1d(sigp, p, height, T, Td)
-                        skew.ax.text(0.01,sigp,f"{z[0]:~.0f}", fontsize='small', transform=trans, ha="left", va="center")
-                        od[f"{sigp:.0f} temp"] = T0[0]
-                        od[f"{sigp:.0f} thetae"] = mpcalc.equivalent_potential_temperature(sigp, T0, Td0).to("degC")[0]
+                zs, T0s, Td0s = interpolate_1d(sigps, p, height, T, Td) # ignore UserWarning: Interp pt out of data bounds... they're set to nan.
+                for z,T0,Td0,sigp in zip(zs,T0s,Td0s,sigps):
+                    if np.isnan(z): continue
+                    skew.ax.text(0.01,sigp,f"{z:~.0f}", fontsize='small', transform=trans, ha="left", va="center")
+                    od[f"{sigp:.0f} temp"] = T0
+                    od[f"{sigp:.0f} thetae"] = mpcalc.equivalent_potential_temperature(sigp, T0, Td0).to("degC")
             else:
+                logging.debug(f"open {itime} NARR")
                 ds = xarray.open_dataset(narr.get(itime))
+                logging.debug("reverse pressure dimension")
                 ds = ds.reindex(lv_ISBL0=ds.lv_ISBL0[::-1]) # 1000 to 100mb
+                logging.debug("find closest gridpoint to station")
                 imin = ((ds.gridlon_221-slon.m)**2 + (ds.gridlat_221-slat.m)**2).argmin(dim=["gridx_221","gridy_221"])
                 prof = ds.isel(imin)
                 lon = prof.gridlon_221.metpy.quantify().data
@@ -113,6 +121,7 @@ def main():
                 v = prof["V_GRD_221_ISBL"]
                 u = u.metpy.convert_units(plot_barbs_units)
                 v = v.metpy.convert_units(plot_barbs_units)
+                logging.debug("NARR temp and thetae")
                 for sigp in sigps:
                     z = prof["HGT_221_ISBL"].sel(dict(lv_ISBL0=sigp))
                     skew.ax.text(0.01,sigp,f"{z.astype(int).metpy.quantify().data:~}", fontsize='small', transform=trans, ha="left", va="center")
@@ -120,6 +129,7 @@ def main():
                     Td0 = Td.sel(dict(lv_ISBL0=sigp))
                     od[f"{sigp:.0f} temp"] = T0.data
                     od[f"{sigp:.0f} thetae"] = mpcalc.equivalent_potential_temperature(sigp, T0, Td0).data.to("degC")
+                logging.debug("NARR sbcape")
                 od["narr sbcape"]    = narr.scalardata('sbcape', itime).isel(imin).data
                 od["narr sbcinh"]    = narr.scalardata('sbcinh', itime).isel(imin).data
                 od["narr mlcape"]    = narr.scalardata('mlcape', itime).isel(imin).data
@@ -129,6 +139,7 @@ def main():
                 od["psfc"]           = narr.scalardata('psfc', itime).isel(imin).data
                 od["pwat"]           = narr.scalardata('pwat', itime).isel(imin).data * units.m**3 / (1000*units.kg)
                 od["pwat"]           = od["pwat"].to("mm")
+                logging.debug("NARR shears")
                 od["narr shr10m_900hPa"] = narr.scalardata('shr10m_900hPa', itime).isel(imin).data.compute()
                 od["narr shr10m_700hPa"] = narr.scalardata('shr10m_700hPa', itime).isel(imin).data.compute()
                 od["narr shr10m_1000m"] = narr.scalardata('shr10m_1000m', itime).isel(imin).data.compute()
@@ -290,12 +301,17 @@ def main():
 def move_units_from_values_to_column_names(df):
     rdict = {}
     for col in df.columns:
-        values = df[col].values
+        igood = ~df[col].isna()
+        values = df.loc[igood,col].values
+        # If first good element has units...
         if hasattr(values[0], 'units'):
+            # Make sure units are all the same
             us = [x.units for x in values]
             assert len(set(us)) == 1, f"units of {col} not all the same {set(us)}"
-            logging.debug(f"move {us[0]} of {col} from values to to column name")
-            df[col] = [x.m for x in values]
+            logging.debug(f"move {us[0]} of {col} from values to column name")
+            # Take magnitude of column values (remove units)
+            df.loc[igood,col] = [x.m for x in values]
+            # append units to column name
             rdict[col] = f"{col} [{us[0]:~}]"
     df = df.rename(columns=rdict)
     return df
