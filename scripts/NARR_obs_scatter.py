@@ -57,15 +57,17 @@ def main():
     # This is kind of kludgy, but better than before
     obs  = df[df["sounding type"] == "obs"].reset_index()
     narr = df[df["sounding type"] == "NARR"].reset_index()
-    narrvalues = narr[vary]
+
+    narrvalues = narr[varx]
     if varx == vary:
         # differentiate column names
-        vary = "narr "+vary
-    obs[vary] = narrvalues # Replace vary in obs with narr values
+        varx = "narr "+varx
+    obs[varx] = narrvalues # Replace varx in obs with narr values
     # Then plot obs
     blue, orange, green, red, purple, brown, pink, gray, yellow,teal = sns.color_palette()
     colors = dict(upshr=teal, dnshr=red)
-    ax = sns.scatterplot(data=obs, x=varx, y=vary, hue="place", palette=colors, style="LTC category")
+    ax = sns.scatterplot(data=obs, x=varx, y=vary, hue="place", palette=colors, style="LTC category",
+            markers=["o","^","P"]) # Tried "+" instead of "s" (square) but ValueError: Filled and line art markers cannot be mixed. Tried "*" instead of "o" but star is too tiny.
     plt.setp(ax.get_legend().get_texts(), fontsize='6') # for legend text
  
     # one-to-one line
@@ -78,7 +80,11 @@ def main():
         for x,y,s in zip(obs[varx],obs[vary],labels):
             ax.text(x,y,s,fontsize=4, ha="center", va="center_baseline")
 
-    text = f"created {datetime.datetime.now()}"
+    text = f"Radiosonde Mean = {obs[vary].mean():.2f}\n"
+    text += f"NARR Error Magnitude = {abs(obs[varx] - obs[vary]).mean():.2f}\n"
+    text += f"NARR Bias = {obs[varx].mean() - obs[vary].mean():+.2f}\n"
+    text += f"$R^2$ (Radiosonde, NARR) = {obs[varx].corr(obs[vary])**2:.2f}\n"
+    text += f"created {datetime.datetime.now()}"
     fineprint = plt.annotate(text=text, xy=(2,1), xycoords=('figure pixels','figure pixels'), va="bottom", fontsize=6)
     if no_fineprint: fineprint.set_visible(False)
 
