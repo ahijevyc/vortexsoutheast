@@ -25,6 +25,7 @@ parser.add_argument('--no-fineprint', action="store_true", help="Don't write add
 locations = parser.add_mutually_exclusive_group(required=False)
 locations.add_argument('--centroid', type=str, default = "shr10_700 max", choices=VSE.centroids(), help='use predetermined list of locations defined by coord and centroid')
 locations.add_argument('--location', nargs='+', type=str, default=None, help='label/azimuth/range. azimuth in deg, starting at north and increasing cw. range in km')
+parser.add_argument('--simplegend', action="store_true", help='no azimuth and range in legend location labels')
 parser.add_argument('--twin', type=int, default=3, help='time window in hours')
 args = parser.parse_args()
 
@@ -37,6 +38,7 @@ field        = args.field
 idir         = args.idir 
 no_fineprint = args.no_fineprint
 location     = args.location
+simplegend   = args.simplegend
 twin         = args.twin
 
 level = logging.DEBUG if args.debug else logging.INFO
@@ -45,9 +47,10 @@ logging.debug(args)
 
 if centroid:
     location = VSE.pointlist[coord][centroid]
-location_labels = location
 azimuths  = [ar.split("/")[1].replace("deg","") for ar in location]
 ranges_km = [ar.split("/")[2].replace("km","") for ar in location]
+if simplegend:
+    location_labels = [ar.split("/")[0] for ar in location]
 
 
 hour = xarray.DataArray(data=["09z","12z","15z","18z","21z","00z","03z","06z","09z","12z"], coords={"hour":range(-1,9)}, dims="hour", name="hour", attrs={"format":"%Hz"})
@@ -99,8 +102,9 @@ ci, n_boot = 95, 10000
 ax = sns.lineplot(data=narrds.to_dataframe(), x="hour", y=field, hue="location", errorbar=('ci',ci), n_boot=n_boot, seed=14, ax=ax)
 ax.set(xlim=(0.5,hour.size-1.5))
 ax.set(ylabel=f"{field} [{narrds[field].units}]")
-plt.setp(ax.get_legend().get_texts(), fontsize="x-small")
-plt.setp(ax.get_legend().get_title(), fontsize="x-small")
+fontsize = "small" if simplegend else "x-small"
+plt.setp(ax.get_legend().get_texts(), fontsize=fontsize)
+plt.setp(ax.get_legend().get_title(), fontsize=fontsize)
 ax.grid(alpha=0.5, lw=0.5)
 
 plt.suptitle(f"{desc}  {coord} points up", wrap=True)
