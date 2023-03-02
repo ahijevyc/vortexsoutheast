@@ -279,13 +279,13 @@ for istorm, storm in enumerate(stormlist):
     useIBTrACS = True
     useNHCbesttracks = not useIBTrACS
     if useNHCbesttracks:
-        atcfname = ibtracs.get_atcfname_from_stormname_year(stormname, year, debug=debug) 
+        atcfname = ibtracs.get_atcfname_from_stormname_year(stormname, year) 
         best_track_file = atcf.archive_path(atcfname) # provide path to atcf archive
-        trackdf = atcf.read(best_track_file, debug=debug)
-        trackdf = atcf.interpolate(trackdf, '3H', debug=debug) # NARR is every 3 hours; NHC best track is usually every 6.
+        trackdf = atcf.read(best_track_file)
+        trackdf = atcf.interpolate(trackdf, '3H') # NARR is every 3 hours; NHC best track is usually every 6.
     if useIBTrACS:
         # Use IBTrACS
-        trackdf, best_track_file = ibtracs.get_atcf(stormname, year, basin="NA") # North Atlantic basin guaranteed for NARR
+        trackdf, best_track_file = ibtracs.get_df(stormname, year, basin="NA") # North Atlantic basin guaranteed for NARR
         extension = ibtracs.extension(stormname, year)
         trackdf = trackdf.append(extension, sort=False, ignore_index=True)
         # Considered interpolating to 3H but IBTrACS already has data every 3H for most storms.
@@ -429,7 +429,7 @@ for istorm, storm in enumerate(stormlist):
 
         if not storm_reports.empty:
             legend_items = spc.plot(storm_reports, axc, drawrange=0)
-            axc.legend(handles=legend_items.values(), fontsize='xx-small').set_title(storm_report_time_window_str, prop={'size':'4.5'})
+            axc.legend(handles=legend_items.values()).set_title(storm_report_time_window_str, prop={'size':'4.5'})
 
         # *must* call draw in order to get the axis boundary used to add ticks:
         fig.canvas.draw()
@@ -440,8 +440,8 @@ for istorm, storm in enumerate(stormlist):
         axc.gridlines(xlocs=xticks, ylocs=yticks, linewidth=0.4, alpha=0.8, linestyle='--')
         axc.xaxis.set_major_formatter(LONGITUDE_FORMATTER) 
         axc.yaxis.set_major_formatter(LATITUDE_FORMATTER)
-        gridlines.lambert_xticks(axc, xticks, fontsize='x-small')
-        gridlines.lambert_yticks(axc, yticks, fontsize='x-small')
+        gridlines.lambert_xticks(axc, xticks)
+        gridlines.lambert_yticks(axc, yticks)
         axc.set_xlabel('')
         axc.set_ylabel('')
         axc.add_feature(cartopy.feature.STATES.with_scale('50m'), linewidth=0.35, alpha=0.55)
@@ -462,7 +462,7 @@ for istorm, storm in enumerate(stormlist):
 
     TCFlow = ncl.steering_flow(lat0=lat1,lon0=lon1,storm_heading=storm_heading,storm_speed=storm_speed,
             stormname=stormname, rx=4.5, ensmember=stormname, ptop=ptop, pbot=pbot, 
-            file_ncl=narr.get(valid_time, narrtype=narr.narr3D, targetdir=workdir), debug=debug)
+            file_ncl=narr.get(valid_time, narrtype=narr.narr3D, targetdir=workdir))
     wind_shear_heading = TCFlow["wind_shear_heading"] * units.degrees
     wind_shear_mag   = TCFlow["wind_shear_speed"] * units.parse_expression("m/s")
 
