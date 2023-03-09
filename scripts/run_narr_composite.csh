@@ -4,7 +4,7 @@
 
 
 # Storm and time lists written to this directory
-set stormlistdir=/glade/work/ahijevyc/share/VSE
+set stormlistdir=/glade/scratch/ahijevyc/vortexsoutheast/stormtimelist
 
 # plots written to this directory
 set odir=/glade/scratch/ahijevyc/trier/VSE
@@ -20,11 +20,7 @@ set normalize_str=""
 set time_window_hours=6
 set anchor_hour=0
 
-module load conda
-module load ncl
-conda activate npl
-
-set CM1=CM1_input_fields.txt
+set CM1=../CM1_input_fields.txt
 if (-e $CM1) rm $CM1
 foreach f (u v sh hgt temp)
     foreach p (100 125 150 175 200 225 250 275 300 350 400 450 500 550 600 650 700 750 800 825 850 875 900 925 950 975 1000)
@@ -90,16 +86,15 @@ foreach filllinebarb (`cat /glade/scratch/ahijevyc/vortexsoutheast/scripts/filll
 #PBS -e $TMPDIR/$fill.$line$hh.err
 #PBS -o $TMPDIR/$fill.$line$hh.out
 #PBS -q casper
-#PBS -l walltime=07:00:00
+#PBS -l walltime=06:00:00
 #PBS -l select=1:ncpus=1:mem=4GB
 
 setenv TMPDIR /glade/scratch/$USER/temp
 mkdir -p $TMPDIR
 
 module reset
-module load conda
 module load ncl
-conda activate npl
+conda activate
 END
 
         foreach desc (strong_LTC_many_tornadoes \
@@ -118,7 +113,7 @@ END
             if (! -s $a) then
                 python /glade/scratch/ahijevyc/vortexsoutheast/scripts/get_diurnal_hour.py /glade/scratch/ahijevyc/vortexsoutheast/categories/$desc.txt $diurnal_hours > $a 
             endif
-            echo python ~ahijevyc/bin/NARR_composite.py --fill $fill $lineargs $barbargs $a $normalize_str --ofile $odir/$desc.$fill.$line$barb${hh}z.png --netcdf $odir/nc/$desc.$fill.${hh}z.nc >> $batch
+            echo python NARR_composite.py --fill $fill $lineargs $barbargs $a $normalize_str --ofile $odir/$desc.$fill.$line$barb${hh}z.png --netcdf $odir/nc/$desc.$fill.${hh}z.nc >> $batch
         end
 
 
