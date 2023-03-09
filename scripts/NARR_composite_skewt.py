@@ -19,7 +19,7 @@ def main():
     parser = argparse.ArgumentParser(description='skew t of output from NARR_composite.py', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--coord', type=str, choices=["north", "storm motion", "wind shear"], default = "north", help='coordinate system. fields rotated so that this vector points up')
     parser.add_argument('-d','--debug', action="store_true", help='print debug messages')
-    parser.add_argument('--desc', type=str, default="tornadoes_near_coast", choices=VSE.composites(), help='description')
+    parser.add_argument('--desc', type=str, default="all_LTC", choices=VSE.composites(), help='description')
     parser.add_argument('-f','--force_new', action="store_true", help='overwrite old file')
     parser.add_argument('--hrs', type=str, default="0003z", help='hrs')
     parser.add_argument('--idir', type=str, default = "/glade/scratch/ahijevyc/trier/VSE/nc", help='input directory')
@@ -43,15 +43,9 @@ def main():
 
     skewtfields = ["hgt", "sh", "u", "v", "temp"]
     files = [ f"{idir}/{desc}.{x}.{hrs}.nc" for x in skewtfields]
-    if debug:
-        logging.debug(f"opening {files}")
-        narr_files = {}
-        for f in files:
-            if not os.path.exists(f):
-                logging.debug(f"{os.path.realpath(f)} does not exist. Did u remember to run ~/bin/stack_NARR.csh?")
-                sys.exit(1)
-            ds = xarray.open_dataset(f)
-            narr_files[f] = ds.narr_files
+    logging.debug(f"opening {files}")
+    for f in files:
+        assert os.path.exists(f), f"{os.path.realpath(f)} does not exist. Did u remember to run ~/bin/stack_NARR.csh?"
             
     #ds = xarray.open_mfdataset(files, combine="by_coords", concat_dim=None)
     ds = xarray.open_mfdataset(files)
