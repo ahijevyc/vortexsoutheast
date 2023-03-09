@@ -1,1 +1,1 @@
-/glade/u/home/ahijevyc/lib/python3.6/fieldinfo.py
+../../webplot/fieldinfo.py
