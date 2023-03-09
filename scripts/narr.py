@@ -49,7 +49,6 @@ levs.extend([l * units["dimensionless"] for l in ['lev1', 'trop']])
 for lev in levs:
     for ws in ['wind', 'speed', 'u', 'v', 'vort', 'div']:
         f = fstr(ws,lev)
-        if f not in fieldinfo: fieldinfo[f] = {}
         fieldinfo[f]['levels'] = range(2,36,2)
         fieldinfo[f]['cmap'] = readNCLcm('wind_17lev')
         if ws == 'vort':
@@ -69,32 +68,27 @@ for lev in levs:
             fieldinfo[f]['levels'] = range(-22,26,4)
             fieldinfo[f]['cmap'] = readNCLcm('cmocean_balance')
         if ws == 'u':
-            fieldinfo[f]['sel'] =  [fieldinfo[f]['fname'][0]] # make 1-element list so you can use info['sel'][0] for attributes
+            fieldinfo[f]['sel'] =  fieldinfo[f]['fname'][0] 
         if ws == 'v':
-            fieldinfo[f]['sel'] =  [fieldinfo[f]['fname'][1]] # make 1-element list so you can use info['sel'][0] for attributes
-
+            fieldinfo[f]['sel'] =  fieldinfo[f]['fname'][1]
     hgt = fstr('hgt',lev)
-    if hgt not in fieldinfo: fieldinfo[hgt] = {}
     fieldinfo[hgt]['levels'] = range(0,17000,500)
     fieldinfo[hgt]['cmap'] =  readNCLcm('nice_gfdl')[3:193]
     fieldinfo[hgt]['fname'] = 'HGT_221_ISBL'
     fieldinfo[hgt]['vertical'] = lev
     sh = fstr('sh',lev)
-    if sh not in fieldinfo: fieldinfo[sh] = {}
     fieldinfo[sh]['levels'] = [1e-11,0.01,0.1,1,5,10,15,20,25]
     fieldinfo[sh]['cmap'] =  readNCLcm('nice_gfdl')[3:193]
     fieldinfo[sh]['fname'] = 'SPF_H_221_ISBL'
     fieldinfo[sh]['vertical'] = lev
     fieldinfo[sh]['units'] = 'g/kg'
     temp = fstr('temp',lev)
-    if temp not in fieldinfo: fieldinfo[temp] = {}
     fieldinfo[temp]['levels'] = range(-65,30,5)
     fieldinfo[temp]['cmap'] =  readNCLcm('nice_gfdl')[3:193]
     fieldinfo[temp]['fname'] = 'TMP_221_ISBL'
     fieldinfo[temp]['vertical'] = lev
     fieldinfo[temp]['units'] = 'degC'
     rh = fstr('rh',lev)
-    if rh not in fieldinfo: fieldinfo[rh] = {}
     fieldinfo[rh]['levels'] = range(0,100,10)
     fieldinfo[rh]['cmap'] = readNCLcm('CBR_drywet')[1:-1] # take out 2 darkest colors so black shows up on top of them.
     fieldinfo[rh]['fname'] = ['TMP_221_ISBL','SPF_H_221_ISBL']
@@ -108,7 +102,6 @@ for lev in levs:
 fieldinfo['bunkers']['fname'] = ['USTM_221_HTGY','VSTM_221_HTGY']
 #fieldinfo['hfx'] = {'levels' : [-640,-320,-160,-80,-40,-20,-10,0,5,10,15,20,40,60,80], 'cmap':readNCLcm('amwg256')[::-1], 'fname'  : ['SHTFL_221_SFC'] }
 fieldinfo['hfx'] = {'levels' : list(range(-600,125,25)), 'cmap':readNCLcm('amwg256')[::-1], 'fname'  : 'SHTFL_221_SFC'} # NARR sfc flux is upward (highly negative in day)
-fieldinfo['lcl'] = {}
 fieldinfo['lcl']['cmap'] = [readNCLcm('nice_gfdl')[i] for i in [3,20,37,54,72,89,106,123,141,158,175,193]]
 fieldinfo['lcl']['cmap'].reverse()
 fieldinfo['lcl']['fname'] = 'PRES_221_ADCL'
@@ -142,9 +135,9 @@ fieldinfo['psfc']['fname'] = 'PRES_221_SFC'
 fieldinfo['pwat']['levels'] = [20,25,30,35,40,45,50,55,60,65,70] # precipitable water in kg/m**2 not depth-of-water
 fieldinfo['pwat']['fname'] = 'P_WAT_221_EATM'
 fieldinfo['pwat']['temporal'] = 0 # P_WAT_221_EATM has 0 and 3-h forecast, for some reason.
-fieldinfo['rh_0deg'] = fieldinfo['rh700hPa'].copy() 
+fieldinfo['rh_0deg'] = fieldinfo['rh700'].copy() 
 fieldinfo['rh_0deg']['fname'] = 'R_H_221_0DEG'
-fieldinfo['rh_0deg']['vertical'] = 'freezing level' # Remember to overwrite 'vertical' from rh700
+fieldinfo['rh_0deg']['vertical'] = 'freezing level' # overwrite 'vertical' from rh700
 fieldinfo['rh2'] = fieldinfo['rh700hPa'].copy() 
 fieldinfo['rh2']['fname'] = 'R_H_221_HTGL'
 fieldinfo['rh2']['vertical'] = 2*units.meters
@@ -160,7 +153,7 @@ for bot, top in itertools.permutations(levs, 2): # create shear fieldinfo entry 
     shr = f"shr{bot.m}{bot.units:~}_{top.m}{top.units:~}"
     fieldinfo[shr] = fieldinfo['shr10m_30m'].copy()
     fieldinfo[shr]['vertical'] = [bot,top]
-fieldinfo['shrtrop'] = {'levels':np.array([2,5,10,15,20,30,50])*1e-3, 'cmap': fieldinfo['speed700']['cmap'], 
+fieldinfo['shrtrop'] = {'levels':np.array([2,5,10,15,20,30,50])*1e-3, 'cmap': fieldinfo['speed700']['cmap'],     
                         'fname': 'VWSH_221_TRO', 'vertical':'tropopause'} # shear at tropopause. https://www.emc.ncep.noaa.gov/mmb/rreanl/faq.html 
 fieldinfo['srh'] = fieldinfo['srh1'].copy()
 fieldinfo['srh']['levels'].extend([750])
@@ -191,6 +184,11 @@ fieldinfo['wcfluxconv'] = {'fname':'WCCONV_221_ISBY_acc3h','levels':np.array(fie
 idir = "/glade/collections/rda/data/ds608.0/3HRLY/" # path to NARR
 #######################################################################
 
+dims_dict=dict(
+        gridx_221="x",
+        gridy_221="y"
+        )
+
 # Get static NARR file, convert to netCDF.
 # Return netCDF filename.
 def get_fixed(fieldname):
@@ -200,30 +198,34 @@ def get_fixed(fieldname):
     if not os.path.exists(narr):
         narr_grb ='/glade/collections/rda/data/ds608.0/FIXED/rr-fixed.grb'
         call_args = ["ncl_convert2nc", narr_grb, "-e", "grb", "-o", targetdir]
-        print(call_args)
+        logging.info(call_args)
         subprocess.check_call(call_args)
 
-    ncStatic = xarray.open_dataset(narr)
-    return ncStatic[fieldname]
+    nc = xarray.open_dataset(narr)
+    logging.debug(f"rename {narr} {dims_dict}")
+    nc = nc.rename_dims(dims_dict=dims_dict)
+    return nc[fieldname]
 
 surface_height = get_fixed(fieldinfo["surface_height"]["fname"]).metpy.quantify()
 
 # Get NARR file from tar file, convert to netCDF.
 # Return netCDF filename.
-def get(valid_time, targetdir=targetdir, narrtype=narr3D, idir=idir):
+def get(valid_time, targetdir=targetdir, narrtype=narr3D):
     if narrtype == narrFixed:
         return narrFixed
-    assert isinstance(valid_time, datetime.datetime) # make sure valid_time is a datetime object
+    if not isinstance(valid_time, datetime.datetime):
+        logging.warning(f"valid_time is not a datetime object {valid_time}")
     logging.debug(f"narr.get(): valid_time={valid_time} targetdir={targetdir} narrtype={narrtype} idir={idir}")
     vartype, file_suffix = narrtype # 3D, clm, flx, pbl, or sfc 
     narr = os.path.join(targetdir, valid_time.strftime("merged_AWIP32.%Y%m%d%H."+file_suffix+".nc"))
     # Convert to netCDF if netCDF file doesn't exist.
     if os.path.exists(narr):
         #TODO: Make sure file is complete. Another instance of narr.get() may still be writing it.
+        logging.debug(f"narr.get(): found previously existing narr file {narr}")
         pass
     else:
-        logging.info(f"narr.get(): previously existing narr file not found {narr}")
-        narr_grb = narr[:-3] # drop '.nc' suffix
+        logging.warning(f"narr.get(): no previously existing narr file {narr}")
+        narr_grb, ext = os.path.splitext(narr) # drop '.nc' suffix
         # Extract NARR grib file from tar file if it doesn't exist.
         if not os.path.exists(narr_grb):
             search_str = idir + valid_time.strftime('%Y/NARR'+vartype+'_%Y%m_') + '*.tar'
@@ -242,12 +244,11 @@ def get(valid_time, targetdir=targetdir, narrtype=narr3D, idir=idir):
                 if valid_time >= dd1 and valid_time < dd2:
                     break
             narrtar = n
-            logging.info(f"Found NARR tar file: {narrtar}")
             tar = tarfile.open(narrtar, mode='r')
-            logging.info(f"extracting {os.path.basename(narr_grb)}")
+            logging.info(f"extracting {os.path.basename(narr_grb)} from tar file {narrtar}")
             ret = tar.extract(os.path.basename(narr_grb),path=targetdir)
         call_args = ["ncl_convert2nc", narr_grb, "-e", "grb", "-o", targetdir]
-        logging.info(call_args)
+        logging.debug(call_args)
         subprocess.check_call(call_args)
     return narr 
 
@@ -325,7 +326,7 @@ def vertical(data, info):
             res = [i for i in data.dims if i.startswith('lv_')]
             vertical = res[0]
             logging.debug(f"narr.vertical(): metpy does not identify vertical coordinate. assume it is ({vertical})")
-            data = data.sel({vertical:vlevel})
+            data = data.sel(vertical=vlevel)
             vertical = data.coords[vertical]
             verttitle = str(vlevel) + vertical.units
         logging.debug(f"narr.vertical(): setting verttitle {verttitle}")
@@ -345,6 +346,9 @@ def shear(field, valid_time=None, targetdir=targetdir):
     ifiles = [get(valid_time, targetdir=targetdir, narrtype=narrtype) for narrtype in [narrFlx,narr3D]]
     ds = xarray.open_mfdataset(ifiles)
 
+    logging.debug(f"rename {dims_dict}")
+    ds = ds.rename_dims(dims_dict=dims_dict)
+
     # ubot and vbot
 
     if bot.units == units.meters:
@@ -359,7 +363,7 @@ def shear(field, valid_time=None, targetdir=targetdir):
         ubot.attrs['verttitle'] = 'bottom model level'
         vbot.attrs['verttitle'] = 'bottom model level'
     else:
-        print("narr.shear(): unexpected bot {bot}")
+        logging.error(f"narr.shear(): unexpected bot {bot}")
         sys.exit(1)
 
     # utop and vtop
@@ -472,29 +476,31 @@ def pressure_to_height(target_p, hgt3D):
     return hgt2D.metpy.quantify()
 
 def scalardata(field: str, valid_time: datetime.datetime, targetdir: str = targetdir):
-    # Get color map, levels, and netCDF variable name appropriate for requested variable (from fieldinfo module).
+    # Get color map, levels, and netCDF variable name appropriate for requested variable (from fieldinfo dictionary).
     info = fieldinfo[field]
 
     # Make cmap a colors.ListedColormap, if it is not already.
     if 'cmap' in info and not isinstance(info['cmap'], (colors.ListedColormap)):
         info['cmap'] = colors.ListedColormap(info['cmap']) 
-    logging.debug(f"scalardata: {field} info={info}")
+    logging.info(f"scalardata: {field} info={info}")
 
     # Get narr file and filename.
     ifiles = [get(valid_time, targetdir=targetdir, narrtype=narrtype) for narrtype in [narrSfc, narrFlx, narrPBL, narr3D]]
-    # path to ifiles without .RS.... extensions (used in fineprint of NARR_composite.py)
-    ifile_basename = ifiles[0].replace(f"{narrSfc[1]}.nc","")
 
-    logging.debug(f"About to open {ifiles}")
-
+    logging.debug(f"about to open {ifiles}")
     nc = xarray.open_mfdataset(ifiles)
+
+    # Avoid UserWarning: Horizontal dimension numbers not found.
+    logging.debug(f"rename {dims_dict}")
+    nc = nc.rename_dims(dims_dict=dims_dict)
 
     # .load() to avoid UserWarning: Passing an object to dask.array.from_array which is already a Dask collection. This can lead to unexpected behavior.
     logging.debug(f'load {info["fname"]}')
+
     data = nc[info["fname"]].load().metpy.quantify()
     # Define data array. Speed and shear derived differently.
     # Define 'long_name' attribute
-    
+   
     if field.startswith("speed"):
         u = data[info["fname"][0]]
         v = data[info["fname"][1]]
@@ -580,10 +586,10 @@ def scalardata(field: str, valid_time: datetime.datetime, targetdir: str = targe
         data = data - surface_height
         data.attrs['long_name']=LCL_pressure.attrs["long_name"].replace("pressure of", "height AGL of")
     else:
-        if 'sel' in info: # this is a component of a vector
-            attrs = data[info["sel"][0]].attrs # remember attributes of sel component before .to_array removes them
+        if 'sel' in info and info["sel"] is not None: # this is a component of a vector
+            attrs = data[info["sel"]].attrs # remember attributes of sel component before .to_array removes them
             data = data.to_array(dim="uv") # convert from Dataset with 2 DataArrays to single DataArrray
-            data.attrs = attrs # for long_name
+            data.attrs.update(attrs) # for long_name
 
     data = myunits(data, info)
     data = vertical(data, info)
@@ -591,7 +597,6 @@ def scalardata(field: str, valid_time: datetime.datetime, targetdir: str = targe
 
     data.name = field
     #data.attrs['field'] = field  # maybe delete. stored in DataArray.name
-    data.attrs['ifile'] = ifile_basename
     # use np.array to allow for levels to be a range
     levels = np.array(info['levels'])
     data.attrs['levels'] = levels
@@ -603,7 +608,7 @@ def scalardata(field: str, valid_time: datetime.datetime, targetdir: str = targe
 def vectordata(field, valid_time, targetdir=targetdir):
     # Get color map, levels, and netCDF variable name appropriate for requested variable (from fieldinfo module).
     info = fieldinfo[field]
-    logging.debug(f"vectordata(): field={field} info={info}")
+    logging.info(f"vectordata(): field={field} info={info}")
     if field.startswith("shr"):
         u,v = shear(field, valid_time, targetdir=targetdir)
         u = temporal(u, info) # shear doesn't apply temporal like scalardata does.
