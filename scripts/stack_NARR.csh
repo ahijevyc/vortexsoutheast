@@ -48,7 +48,7 @@ foreach desc (strong_LTC_many_tornadoes_prelandfall \
                 ncecat -u lv_ISBL0 -O $desc.$f${p}hPa.$t.x.nc $desc.$f${p}hPa.$t.x.nc
             end
 
-            ncrcat -O\
+            ncrcat -x -v narr_files -O\
                    $desc.${f}1000hPa.$t.x.nc\
                    $desc.${f}975hPa.$t.x.nc\
                    $desc.${f}950hPa.$t.x.nc\
@@ -77,8 +77,12 @@ foreach desc (strong_LTC_many_tornadoes_prelandfall \
                    $desc.${f}125hPa.$t.x.nc\
                    $desc.${f}100hPa.$t.x.nc\
                    $ofile
-            if ($status == 0) rm $desc.${f}[0-9]*[0-9]hPa.$t.x.nc
-            echo $ofile
+            if ($status == 0) then
+                echo $ofile
+                rm $desc.${f}[0-9]*[0-9]hPa.$t.x.nc
+            else
+                echo "error no $ofile made"
+            endif
         end
     end
 end
