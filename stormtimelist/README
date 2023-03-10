@@ -1,0 +1,27 @@
+storm lists are written here by run_narr_composite.csh
+names are unwieldy for longer diurnal cycle time windows, like 24 hours.
+
+
+Simplified run_narr_composite.csh and redid dates. Found errors in old version. 
+
+all_LTC
+Frances 2004 day early
+Gabrielle 2001 3,6,9 day late
+Irma 2017 day early
+Jeanne 2004 day early
+
+no_or_few_tornadoes_prelandfall
+Arlene 2005 0,3,6,9 day late
+Gordon 2018 6,9 day late
+Hanna 2002 6,9 day late
+
+strong_LTC_many_tornadoes_prelandfall
+Frances 2004 3,6,9 day late
+Gustav 2008 0,3,6,9 day late
+Ike 2008 0,3,6,9 day late
+Katrina 2005 3,6,9 day late
+Rita 2005 6,9 day late
+
+tornadoes_near_coast
+Irene 2011 0,3,6,9 day late
+ 
