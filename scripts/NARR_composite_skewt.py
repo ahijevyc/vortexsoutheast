@@ -17,13 +17,14 @@ import xarray
 
 def main():
     parser = argparse.ArgumentParser(description='skew t of output from NARR_composite.py', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--coord', type=str, choices=["north", "storm motion", "wind shear"], default = "north", help='coordinate system. fields rotated so that this vector points up')
+    parser.add_argument('--centroids', type=str, choices = VSE.centroids(), default="torn max", help="predetermined list of points by coord and centroid")
+    parser.add_argument('--coord', type=str, choices=["north", "storm motion", "wind shear"], default = "wind shear", help='coordinate system. fields rotated so that this vector points up')
     parser.add_argument('-d','--debug', action="store_true", help='print debug messages')
     parser.add_argument('--desc', type=str, default="all_LTC", choices=VSE.composites(), help='description')
     parser.add_argument('-f','--force_new', action="store_true", help='overwrite old file')
     parser.add_argument('--hrs', type=str, default="0003z", help='hrs')
     parser.add_argument('--idir', type=str, default = "/glade/scratch/ahijevyc/trier/VSE/nc", help='input directory')
-    parser.add_argument('--centroids', type=str, choices = VSE.centroids(), default="torn max", help="predetermined list of points by coord and centroid")
+    parser.add_argument('--odir', type=str, default = "../output", help='output directory')
     args = parser.parse_args()
 
 
@@ -34,6 +35,7 @@ def main():
     force_new   = args.force_new
     hrs         = args.hrs
     idir        = args.idir
+    odir        = args.odir
     points      = VSE.pointlist[coord][centroids]
 
     level = logging.DEBUG if debug else logging.INFO
@@ -163,6 +165,7 @@ def main():
         fineprint = plt.annotate(text=text, xy=(2,1), xycoords=('figure pixels','figure pixels'), va="bottom", fontsize=6)
 
         ofile = f"{desc}.{hrs}.{coord.replace(' ','_')}.{azimuth}{ds.azimuth.units}.{range_km}{ds.range.units}.skewt.png"
+        ofile = os.path.join(odir, ofile)
         plt.savefig(ofile)
         print("made", os.path.realpath(ofile))
         fig.clear()
