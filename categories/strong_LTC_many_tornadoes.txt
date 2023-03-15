@@ -3,7 +3,14 @@ Katrina   2005082912
 Rita      2005092412
 Florence  2018091612
 Gustav    2008090112
-Irma      2017091012
+Irma      2017091018
 Frances   2004090712
 Jeanne    2004092712
 Ike       2008091312
+Michael   2018101018
+Opal      1995100421
+Georges   1998092812
+Harvey    2017082612
+Laura     2020082712
+Sally     2020091712
+Ida       2021083012
