@@ -17,8 +17,8 @@ import spc
 parser = argparse.ArgumentParser(description = "Plot NARR", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("-d", "--debug", action='store_true')
 parser.add_argument("-e", "--extent", type=float, nargs=4, help="debug plot extent lonmin, lonmax, latmin, latmax", 
-        default=[-105, -70, 20, 45])
-parser.add_argument("--spctd", type=float, default=1.5, help="hours on either side of valid time to show SPC storm reports")
+        default=[-105, -70, 20, 43])
+parser.add_argument("--spctd", type=float, default=1.5, help="hours on both sides of valid time to show tornadoes")
 parser.add_argument("--onetrackcolor", action="store_true", help="instead of coloring by intensity, color by track")
 parser.add_argument("ifile", help="text file. each line starts with a storm name, followed by a yyyymmddhh time")
 
@@ -30,9 +30,8 @@ ifile = args.ifile
 onetrackcolor = args.onetrackcolor
 spc_td = pd.to_timedelta(args.spctd, unit='hours')
 
-logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
-if debug:
-    logger = logging.getLogger().setLevel(logging.DEBUG)
+level = logging.DEBUG if debug else logging.INFO
+logging.basicConfig(format='%(asctime)s %(message)s', level=level)
 
 logging.debug(args)
 
@@ -44,7 +43,8 @@ def tc_coords(df, trackdf):
     assert i.sum(), f"no track times match {df.name}"
     originlon = trackdf.loc[i,"lon"].values[0] * units.degrees_E
     originlat = trackdf.loc[i,"lat"].values[0] * units.degrees_N
-    dist_from_origin, heading = spc.gdist_bearing(originlon, originlat, df["slon"].values * units.degrees_E, df["slat"].values * units.degrees_N)
+    dist_from_origin, heading = spc.gdist_bearing(originlon, originlat, 
+            df["slon"].values * units.degrees_E, df["slat"].values * units.degrees_N)
     df["dist_from_origin"] = dist_from_origin
     return df
 
@@ -54,14 +54,16 @@ df = pd.read_csv(ifile, delim_whitespace=True, names=["stormname", "narrtime"])
 df["narrtime"] = pd.to_datetime(df["narrtime"], format="%Y%m%d%H", utc=True)
 df["year"] = df["narrtime"].dt.year
 
-logging.info("Load all storm reports and track data (subsample later).")
-all_storm_reports = spc.get_storm_reports(start=pd.to_datetime("20000101",utc=True), end=pd.to_datetime("20200101",utc=True), event_types=["torn"])
+logging.info("load tornado reports (subsample later).")
+all_storm_reports = spc.get_storm_reports(start=pd.to_datetime("19900101",utc=True), 
+        end=pd.to_datetime("20220101",utc=True), event_types=["torn"])
 
 # round storm report times to nearest narr
 epoch = pd.to_datetime("19700101", utc=True)
 f = ((all_storm_reports["time"] + spc_td - epoch) / (spc_td*2) ).astype(int)
 all_storm_reports["time"] = epoch + f * (spc_td*2)
 
+logging.info("Load ibtracs (subsample later).")
 all_tracks, best_track_file = ibtracs.get_df(basin="NA") # North Atlantic basin guaranteed for NARR
 
 logging.info(f"got {len(all_tracks)} track data from {best_track_file}")
