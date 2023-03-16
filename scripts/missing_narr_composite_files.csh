@@ -10,18 +10,8 @@ cd /glade/scratch/ahijevyc/trier/VSE
 
 set b=b.csh
 if (-e $b) rm $b
-foreach desc (strong_LTC_many_tornadoes \
-              weak-to-intermediate_LTC_many_tornadoes \
-              no_or_few_tornadoes \
-              strong_LTC_many_tornadoes_prelandfall \
-              weak-to-intermediate_LTC_many_tornadoes_prelandfall \
-              no_or_few_tornadoes_prelandfall \
-              tornadoes_well_inland \
-              tornadoes_near_coast \
-              all_LTC \
-              all_LTC_prelandfall \
-              )
-
+foreach desc ($repo/categories/*.txt)
+    set desc=`dirname $desc`/`basename $desc .txt`
     foreach hh (0003 0609 1215 1821 03060912 15182100 0003060912151821)
         foreach filllinebarb (`cat $repo/scripts/filllinebarb.txt` `cat $repo/CM1_input_fields.txt`)
             set split=($filllinebarb:as,/, ,)

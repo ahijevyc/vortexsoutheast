@@ -97,18 +97,8 @@ module load ncl
 conda activate
 END
 
-        foreach desc (strong_LTC_many_tornadoes \
-                      weak-to-intermediate_LTC_many_tornadoes \
-                      no_or_few_tornadoes \
-                      strong_LTC_many_tornadoes_prelandfall \
-                      weak-to-intermediate_LTC_many_tornadoes_prelandfall \
-                      no_or_few_tornadoes_prelandfall \
-                      tornadoes_well_inland \
-                      tornadoes_near_coast \
-                      all_LTC \
-                      all_LTC_prelandfall \
-                          )
-
+        foreach desc (../categories/*.txt)
+            set desc=`dirname $desc`/`basename $desc .txt`
             set a=$stormlistdir/$desc.${hh}z.txt
             if (! -s $a) then
                 python /glade/scratch/ahijevyc/vortexsoutheast/scripts/get_diurnal_hour.py /glade/scratch/ahijevyc/vortexsoutheast/categories/$desc.txt $diurnal_hours > $a 
