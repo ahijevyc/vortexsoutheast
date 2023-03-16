@@ -24,7 +24,7 @@ Gabrielle 2001091409
 Bill      2003070112
 Helene    2000092212
 Fay       2002090706
-Hermine   2010090200
+Hermine   2010090812
 Nate      2017100812
 Bill      2015061912
 Cindy     2017062112
@@ -51,12 +51,11 @@ Dennis    2005071100
 Barry     2019071315
 Zeta      2020102900
 Allison   1995060512
-Dean      1995083100
+Dean      1995073100
 Bret      1999082300
 Barry     2001080606
 Erin      2007081812
 Beryl     2012052912
-Gordon    2018090806
 Nestor    2019101912
 Hanna     2020072521
 Claudette 2021061906

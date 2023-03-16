@@ -13,21 +13,11 @@ import pandas as pd
 import pdb
 import spc
 
-def tc_coords(df, trackdf):
-    """
-    get distance from TC center for each storm report in df
-    """
-    originlon = trackdf.loc[trackdf.valid_time == df.name,"lon"].values[0] * units.degrees_E
-    originlat = trackdf.loc[trackdf.valid_time == df.name,"lat"].values[0] * units.degrees_N
-    dist_from_origin, heading = spc.gdist_bearing(originlon, originlat, df["slon"].values * units.degrees_E, df["slat"].values * units.degrees_N)
-    df["dist_from_origin"] = dist_from_origin
-    return df
-
 # =============Arguments===================
 parser = argparse.ArgumentParser(description = "Plot NARR", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("-d", "--debug", action='store_true')
 parser.add_argument("-e", "--extent", type=float, nargs=4, help="debug plot extent lonmin, lonmax, latmin, latmax", 
-        default=[-100.4, -75.6, 24.7, 39.5])
+        default=[-105, -70, 20, 45])
 parser.add_argument("--spctd", type=float, default=1.5, help="hours on either side of valid time to show SPC storm reports")
 parser.add_argument("--onetrackcolor", action="store_true", help="instead of coloring by intensity, color by track")
 parser.add_argument("ifile", help="text file. each line starts with a storm name, followed by a yyyymmddhh time")
@@ -46,9 +36,23 @@ if debug:
 
 logging.debug(args)
 
+def tc_coords(df, trackdf):
+    """
+    get distance from TC center for each storm report in df
+    """
+    i = trackdf.valid_time == df.name
+    assert i.sum(), f"no track times match {df.name}"
+    originlon = trackdf.loc[i,"lon"].values[0] * units.degrees_E
+    originlat = trackdf.loc[i,"lat"].values[0] * units.degrees_N
+    dist_from_origin, heading = spc.gdist_bearing(originlon, originlat, df["slon"].values * units.degrees_E, df["slat"].values * units.degrees_N)
+    df["dist_from_origin"] = dist_from_origin
+    return df
+
+
 logging.info(f"ifile {ifile}")
 df = pd.read_csv(ifile, delim_whitespace=True, names=["stormname", "narrtime"])
 df["narrtime"] = pd.to_datetime(df["narrtime"], format="%Y%m%d%H", utc=True)
+df["year"] = df["narrtime"].dt.year
 
 logging.info("Load all storm reports and track data (subsample later).")
 all_storm_reports = spc.get_storm_reports(start=pd.to_datetime("20000101",utc=True), end=pd.to_datetime("20200101",utc=True), event_types=["torn"])
@@ -72,38 +76,58 @@ if onetrackcolor:
     colors = plt.cm.tab20.colors
 color = itertools.cycle(colors)
 
-for stormname, group in df.groupby("stormname"):
+for (stormname, year), group in df.groupby(["stormname","year"]):
     onecolor = next(color)
-    narrtime=group.narrtime
-    year = narrtime.dt.year.min()
-    logging.info(f"{stormname} {year}")
+    assert len(group) == 1, ("stormname/year combo should be unique in each input file."
+                             "Do not use input file with all times of diurnal cycle. just 1st one")
+    # first narrtime and 3-h intervals covering a diurnal cycle
+    narrtime0 = group.narrtime.values[0]
+    narrtimes = pd.date_range(start=narrtime0, end=narrtime0 + pd.Timedelta(21, unit="hour"), freq="3H", tz='UTC')
     imatch = (all_tracks['stormname'] == stormname.upper()) & (all_tracks['valid_time'].dt.year == year) & (all_tracks["rad"] == 34)
     trackdf = all_tracks[imatch]
     extension = ibtracs.extension(stormname, year)
     trackdf = pd.concat([trackdf, extension], ignore_index=True)
-    trackdf["valid_time"] = pd.to_datetime(trackdf["valid_time"], utc=True)
-    trackdf = trackdf[trackdf.valid_time.isin(narrtime)] # drop track valid_times not in narrtime array
-    mintime = group.narrtime.min()
-    maxtime = group.narrtime.max()
-    logging.info(f"plot_track {mintime}-{maxtime}")
-    trackdf = trackdf[(trackdf.valid_time >= mintime) & ( trackdf.valid_time <= maxtime)]
-    atcf.plot_track(axc, "o", trackdf, stormname, label_interval_hours=0, scale=1.2, onecolor=onecolor)
-    start = narrtime.min()-spc_td
-    end = narrtime.max()+spc_td
-    logging.info(f"get storm reports during narr {start} - {end}")
+    fmt='%Y%m%d %H%Mz'
+    tracktimes = trackdf.valid_time
+    logging.info(f"{stormname} {year} {len(trackdf)} times [{tracktimes.min().strftime(fmt)},{tracktimes.max().strftime(fmt)}]")
+
+
+    last_label = "" if onecolor else stormname
+
+    # Plot dashed track from beginning to end of NARR dirurnal cycle
+    first_label = "o"
+    maxnarr = narrtimes.max()
+    logging.debug(f"plot_track through {maxnarr}")
+    trackdf = trackdf[tracktimes <= maxnarr]
+    atcf.plot_track(axc, first_label, trackdf, last_label, label_interval_hours=0, scale=0.5, linestyle="dashed", onecolor=onecolor)
+
+    # Plot solid track for NARR diurnal cycle
+    number = group.index.values[0] + 1
+    first_label = number if onecolor else "o"
+    trackdf = trackdf[trackdf.valid_time.isin(narrtimes)] # drop tracktimes not in narrtimes array
+    assert not trackdf.empty, f"no track times in {narrtimes}"
+    logging.info(f"plot_track #{number} for {narrtime0} diurnal cycle")
+    atcf.plot_track(axc, first_label, trackdf, last_label, label_interval_hours=0, scale=1.55, onecolor=onecolor)
+
+    start = narrtimes.min()-spc_td
+    end   = narrtimes.max()+spc_td
+    logging.info(f"storm reports [{start.strftime(fmt)},{end.strftime(fmt)})")
     twin = (all_storm_reports.time >= start ) & (all_storm_reports.time < end)
     if not any(twin):
+        logging.warning(f"no storm reports")
         continue
     stormrpts_twin = all_storm_reports[twin]
     # restrict reports to within 800 km of TC
     s = stormrpts_twin.groupby("time", group_keys=False).apply(tc_coords,trackdf)
     s = s[s.dist_from_origin < 800]
+    logging.info(f"{len(s)} storm reports near {stormname} {year}")
     stormrpts.append(s)
     legend_items = spc.plot(s, axc, scale=5, alpha=1, onecolor=onecolor)
 
-if not onetrackcolor:
-    TCleg = atcf.TClegend(axc)
-stormrpts = pd.concat(stormrpts)
+if len(stormrpts):
+    stormrpts = pd.concat(stormrpts)
+else:
+    logging.warning("no storm reports")
 legend_items = spc.plot(stormrpts, axc, scale=0)
 axc.legend(handles=legend_items.values())
 
@@ -111,21 +135,25 @@ axc.set_extent(extent, crs=cartopy.crs.PlateCarree())
 # *must* call draw in order to get the axis boundary used to add ticks:
 fig.canvas.draw()
 
+
 # Define gridline locations and draw the lines using cartopy's built-in gridliner:
 xticks = list(range(-160,-50,10))
 yticks = list(range(0,65,5))
-axc.gridlines(xlocs=xticks, ylocs=yticks, linewidth=0.4, alpha=0.8, linestyle='--')
+axc.gridlines(xlocs=xticks, ylocs=yticks, linewidth=0.2, linestyle='--')
 axc.xaxis.set_major_formatter(LONGITUDE_FORMATTER) 
 axc.yaxis.set_major_formatter(LATITUDE_FORMATTER)
 gridlines.lambert_xticks(axc, xticks)
 gridlines.lambert_yticks(axc, yticks)
 axc.set_xlabel('')
 axc.set_ylabel('')
-axc.add_feature(cartopy.feature.STATES.with_scale('50m'), linewidth=0.35, alpha=0.6)
-axc.add_feature(cartopy.feature.COASTLINE.with_scale('50m'), linewidth=0.5, alpha=0.5)
+axc.add_feature(cartopy.feature.STATES.with_scale('50m'), linewidth=0.2)
+axc.add_feature(cartopy.feature.COASTLINE.with_scale('50m'), linewidth=0.25)
+if not onetrackcolor:
+    # Draw legend after set_extent, or it might be too high
+    TCleg = atcf.TClegend(axc)
 
-ofile = os.path.realpath(os.path.basename(base)+".png")
+ofile = os.path.realpath(os.path.basename(base)+".ps")
 if onetrackcolor:
-    ofile = os.path.realpath(os.path.basename(base)+".colorbytrack.png")
+    ofile = os.path.realpath(os.path.basename(base)+".colorbytrack.ps")
 plt.savefig(ofile)
 logging.info(f'created {ofile}')

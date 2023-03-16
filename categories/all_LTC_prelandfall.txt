@@ -26,7 +26,7 @@ Helene    2000092100
 Fay       2002090600
 Hermine   2010090600
 Nate      2017100700
-Bill      2015061512
+Bill      2015061600
 Cindy     2017062000
 Earl      1998090200
 Frances   1998091000
@@ -51,12 +51,11 @@ Dennis    2005070918
 Barry     2019071203
 Zeta      2020102800
 Allison   1995060412
-Dean      1995083000
+Dean      1995073000
 Bret      1999082112
 Barry     2001080500
 Erin      2007081512
 Beryl     2012052703
-Gordon    2018090400
 Nestor    2019101812
 Hanna     2020072421
 Claudette 2021061803

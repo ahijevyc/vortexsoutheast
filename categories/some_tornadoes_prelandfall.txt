@@ -1,10 +1,9 @@
 Allison   1995060412
-Dean      1995083000
+Dean      1995073000
 Bret      1999082112
 Barry     2001080500
 Erin      2007081512
 Beryl     2012052703
-Gordon    2018090400
 Nestor    2019101812
 Hanna     2020072421
 Claudette 2021061803
