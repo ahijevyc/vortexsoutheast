@@ -87,11 +87,10 @@ for (stormname, year), group in df.groupby(["stormname","year"]):
     narrtimes = pd.date_range(start=narrtime0, end=narrtime0 + pd.Timedelta(21, unit="hour"), freq="3H", tz='UTC')
     imatch = (all_tracks['stormname'] == stormname.upper()) & (all_tracks['valid_time'].dt.year == year) & (all_tracks["rad"] == 34)
     trackdf = all_tracks[imatch]
-    extension = ibtracs.extension(stormname, year)
-    trackdf = pd.concat([trackdf, extension], ignore_index=True)
     fmt='%Y%m%d %H%Mz'
     tracktimes = trackdf.valid_time
-    logging.info(f"{stormname} {year} {len(trackdf)} times [{tracktimes.min().strftime(fmt)},{tracktimes.max().strftime(fmt)}]")
+    logging.info(f"{stormname} {year} {len(trackdf)} times "
+                 f"[{tracktimes.min().strftime(fmt)},{tracktimes.max().strftime(fmt)}]")
 
 
     last_label = "" if onecolor else stormname
