@@ -45,7 +45,7 @@ def fstr(f,lev):
 # wind, hgt, rh, sh, temp at all possible vertical levels
 levs = [l * units.meters for l in [10,30,1000,1500,3000,5000,6000]]
 levs.extend(np.arange(100,1025,25) * units.hPa) # large range useful for Chris Rozoff's CM1 model. Use wide range to prevent "out of contour range" error in NARR_composite.py.
-levs.extend([l * units["dimensionless"] for l in ['lev1', 'trop']])
+levs.extend([l * units.dimensionless for l in ['lev1', 'trop']])
 for lev in levs:
     for ws in ['wind', 'speed', 'u', 'v', 'vort', 'div']:
         f = fstr(ws,lev)
@@ -482,7 +482,7 @@ def scalardata(field: str, valid_time: datetime.datetime, targetdir: str = targe
     # Make cmap a colors.ListedColormap, if it is not already.
     if 'cmap' in info and not isinstance(info['cmap'], (colors.ListedColormap)):
         info['cmap'] = colors.ListedColormap(info['cmap']) 
-    logging.info(f"scalardata: {field} info={info}")
+    logging.debug(f"scalardata: {field} info={info}")
 
     # Get narr file and filename.
     ifiles = [get(valid_time, targetdir=targetdir, narrtype=narrtype) for narrtype in [narrSfc, narrFlx, narrPBL, narr3D]]
@@ -681,8 +681,8 @@ def fromskewtds(nc, field):
                     # srh is 1-D. If you supply higher dim vars, it tries to allocate 73.1 TiB for array (27, 18, 3, 27, 18, 3, 4723921) 
                     _,_,srhs[istorm] = mcalc.storm_relative_helicity(h, u, v, 3*units.km) 
                 print(point.values, hrs.values, storm.values, cc, srhs[istorm].values)
-                mucape.loc[kwargs], mucin.loc[kwargs] = mucapes*units("J/kg"), mucins* units("J/kg")
-                srh.loc[kwargs] = srhs * units("m**2/s**2")
+                mucape.loc[kwargs], mucin.loc[kwargs] = mucapes*units.parse_expression("J/kg"), mucins* units.parse_expression("J/kg")
+                srh.loc[kwargs] = srhs * units.parse_expression("m**2/s**2")
 
         t1_stop = perf_counter()
         print("Elapsed time:", t1_stop-t1_start, 's')
