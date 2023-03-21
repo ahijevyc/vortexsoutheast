@@ -1,5 +1,7 @@
+Bertha    1996071300
 Floyd     1999091612
 Charley   2004081321
+Dennis    2005070912
 Emily     2005072012
 Alex      2010070100
 Dorian    2019090509

@@ -4,6 +4,7 @@ Bret      1999082300
 Barry     2001080606
 Erin      2007081812
 Beryl     2012052912
+Gordon    2018090812
 Nestor    2019101912
 Hanna     2020072521
 Claudette 2021061906
