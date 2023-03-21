@@ -19,7 +19,8 @@ parser.add_argument("-d", "--debug", action='store_true')
 parser.add_argument("-e", "--extent", type=float, nargs=4, help="debug plot extent lonmin, lonmax, latmin, latmax", 
         default=[-105, -70, 20, 43])
 parser.add_argument("--spctd", type=float, default=1.5, help="hours on both sides of valid time to show tornadoes")
-parser.add_argument("--onetrackcolor", action="store_true", help="instead of coloring by intensity, color by track")
+parser.add_argument("--onetrackcolor", action="store_true", 
+        help="instead of coloring track segments by intensity, color entire track (and tornadoes) the same color")
 parser.add_argument("ifile", help="text file. each line starts with a storm name, followed by a yyyymmddhh time")
 
 # Assign arguments to simple-named variables
@@ -50,19 +51,23 @@ def tc_coords(df, trackdf):
 
 def getExt(stormname,year,trackdf, narrtimes):
     etxt = f"../inland_tc_position_dat/{stormname}.{year}.txt"
-    assert os.path.exists(etxt), f"{etxt} not found"
-    logging.warning(f"opening {etxt} to get Roger's TC position at the time of tornado")
-    df = pd.read_csv(etxt, names=["valid_time", "lat", "lon"], delim_whitespace=True, date_parser=lambda x:pd.to_datetime(x,utc=True),
-            parse_dates=["valid_time"], index_col=0)
+    if not os.path.exists(etxt):
+        logging.error(f"{etxt} not found")
+        return trackdf
     trackdf = trackdf.set_index("valid_time")
-    # concatenate IBTRACS and Roger's locations
-    trackdf = pd.concat([trackdf,df], axis="index").sort_index()
-    first_oob_narrtime = df.index[-1].ceil(freq="3H") # first out-of-bounds narrtime
+    # first 3-hrly time after track ends. add second to ensure it is greater than last track time.
+    first_oob_narrtime = (trackdf.index.max()+pd.Timedelta(1,unit='s')).ceil(freq="3H")
     logging.warning(f"first out-of-bounds narrtime is {first_oob_narrtime}")
     extend = index=pd.date_range(start=first_oob_narrtime, 
         end=narrtimes[-1], freq='3H', tz="UTC", name="valid_time")
-    logging.warning(f"append {extend}")
+    logging.warning(f"append {extend.min()}-{extend.max()}")
     trackdf = pd.concat([trackdf, pd.DataFrame(index=extend)], axis="index")
+    # combine Roger's locations
+    logging.warning(f"opening {etxt} to get Roger's TC position at the time of tornado")
+    df = pd.read_csv(etxt, names=["valid_time", "lat", "lon"], delim_whitespace=True, date_parser=lambda x:pd.to_datetime(x,utc=True),
+            parse_dates=["valid_time"], index_col=0)
+    logging.warning(f"combining {len(df)} TC locations at torn times")
+    trackdf = trackdf.combine_first(df).sort_index()
     trackdf["lat"] = trackdf["lat"].interpolate() # forward-fill last position
     trackdf["lon"] = trackdf["lon"].interpolate()
     trackdf = trackdf.reset_index()
@@ -104,7 +109,7 @@ for (stormname, year), group in df.groupby(["stormname","year"]):
     assert len(group) == 1, ("stormname/year combo should be unique in each input file."
                              "Do not use input file with all times of diurnal cycle. just 1st one")
     # first narrtime and 3-h intervals covering a diurnal cycle
-    narrtime0 = group.narrtime.values[0]
+    narrtime0 = pd.to_datetime(group.narrtime.values[0])
     narrtimes = pd.date_range(start=narrtime0, end=narrtime0 + pd.Timedelta(21, unit="hour"), freq="3H", tz='UTC')
     imatch = (all_tracks['stormname'] == stormname.upper()) & (all_tracks['valid_time'].dt.year == year) & (all_tracks["rad"] == 34)
     trackdf = all_tracks[imatch]
@@ -127,13 +132,13 @@ for (stormname, year), group in df.groupby(["stormname","year"]):
     number = group.index.values[0] + 1
     first_label = number if onecolor else "o"
     in_narr = trackdf.valid_time.isin(narrtimes)
-    if trackdf[in_narr].empty:
-        logging.warning(f"no track times in {narrtimes}. checking extensions")
+    if in_narr.sum() < 8:
+        logging.warning(f"only {in_narr.sum()} track times in {narrtime0.strftime(fmt)} diurnal cycle. checking extensions")
         trackdf = getExt(stormname,year,trackdf,narrtimes)
     else:
         trackdf = trackdf[in_narr] # drop tracktimes not in narrtimes array
-    logging.info(f"plot_track #{number} {stormname} for {narrtime0} diurnal cycle")
-    atcf.plot_track(axc, first_label, trackdf, last_label, label_interval_hours=0, scale=1.55, onecolor=onecolor)
+    logging.info(f"plot_track #{number} {stormname} for {narrtime0.strftime(fmt)} diurnal cycle")
+    atcf.plot_track(axc, first_label, trackdf, last_label, label_interval_hours=0, scale=1.6, onecolor=onecolor)
 
     start = narrtimes.min()-spc_td
     end   = narrtimes.max()+spc_td
@@ -172,8 +177,8 @@ gridlines.lambert_xticks(axc, xticks)
 gridlines.lambert_yticks(axc, yticks)
 axc.set_xlabel('')
 axc.set_ylabel('')
-axc.add_feature(cartopy.feature.STATES.with_scale('50m'), linewidth=0.2)
-axc.add_feature(cartopy.feature.COASTLINE.with_scale('50m'), linewidth=0.25)
+axc.add_feature(cartopy.feature.STATES.with_scale('50m'), linewidth=0.18)
+axc.add_feature(cartopy.feature.COASTLINE.with_scale('50m'), linewidth=0.22)
 if not onetrackcolor:
     # Draw legend after set_extent, or it might be too high
     TCleg = atcf.TClegend(axc)
