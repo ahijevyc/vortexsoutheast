@@ -48,6 +48,27 @@ def tc_coords(df, trackdf):
     df["dist_from_origin"] = dist_from_origin
     return df
 
+def getExt(stormname,year,trackdf, narrtimes):
+    etxt = f"../inland_tc_position_dat/{stormname}.{year}.txt"
+    assert os.path.exists(etxt), f"{etxt} not found"
+    logging.warning(f"opening {etxt} to get Roger's TC position at the time of tornado")
+    df = pd.read_csv(etxt, names=["valid_time", "lat", "lon"], delim_whitespace=True, date_parser=lambda x:pd.to_datetime(x,utc=True),
+            parse_dates=["valid_time"], index_col=0)
+    trackdf = trackdf.set_index("valid_time")
+    # concatenate IBTRACS and Roger's locations
+    trackdf = pd.concat([trackdf,df], axis="index").sort_index()
+    first_oob_narrtime = df.index[-1].ceil(freq="3H") # first out-of-bounds narrtime
+    logging.warning(f"first out-of-bounds narrtime is {first_oob_narrtime}")
+    extend = index=pd.date_range(start=first_oob_narrtime, 
+        end=narrtimes[-1], freq='3H', tz="UTC", name="valid_time")
+    logging.warning(f"append {extend}")
+    trackdf = pd.concat([trackdf, pd.DataFrame(index=extend)], axis="index")
+    trackdf["lat"] = trackdf["lat"].interpolate() # forward-fill last position
+    trackdf["lon"] = trackdf["lon"].interpolate()
+    trackdf = trackdf.reset_index()
+    trackdf = trackdf[trackdf.valid_time.isin(narrtimes)]
+    return trackdf
+
 
 logging.info(f"ifile {ifile}")
 df = pd.read_csv(ifile, delim_whitespace=True, names=["stormname", "narrtime"])
@@ -105,9 +126,13 @@ for (stormname, year), group in df.groupby(["stormname","year"]):
     # Plot solid track for NARR diurnal cycle
     number = group.index.values[0] + 1
     first_label = number if onecolor else "o"
-    trackdf = trackdf[trackdf.valid_time.isin(narrtimes)] # drop tracktimes not in narrtimes array
-    assert not trackdf.empty, f"no track times in {narrtimes}"
-    logging.info(f"plot_track #{number} for {narrtime0} diurnal cycle")
+    in_narr = trackdf.valid_time.isin(narrtimes)
+    if trackdf[in_narr].empty:
+        logging.warning(f"no track times in {narrtimes}. checking extensions")
+        trackdf = getExt(stormname,year,trackdf,narrtimes)
+    else:
+        trackdf = trackdf[in_narr] # drop tracktimes not in narrtimes array
+    logging.info(f"plot_track #{number} {stormname} for {narrtime0} diurnal cycle")
     atcf.plot_track(axc, first_label, trackdf, last_label, label_interval_hours=0, scale=1.55, onecolor=onecolor)
 
     start = narrtimes.min()-spc_td
