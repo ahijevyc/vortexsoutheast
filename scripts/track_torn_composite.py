@@ -135,8 +135,8 @@ for (stormname, year), group in df.groupby(["stormname","year"]):
     if in_narr.sum() < 8:
         logging.warning(f"only {in_narr.sum()} track times in {narrtime0.strftime(fmt)} diurnal cycle. checking extensions")
         trackdf = getExt(stormname,year,trackdf,narrtimes)
-    else:
-        trackdf = trackdf[in_narr] # drop tracktimes not in narrtimes array
+        in_narr = trackdf.valid_time.isin(narrtimes)
+    trackdf = trackdf[in_narr] # drop tracktimes not in narrtimes array
     logging.info(f"plot_track #{number} {stormname} for {narrtime0.strftime(fmt)} diurnal cycle")
     atcf.plot_track(axc, first_label, trackdf, last_label, label_interval_hours=0, scale=1.6, onecolor=onecolor)
 
