@@ -56,7 +56,7 @@ Nestor    2019101912
 Hanna     2020072521
 Isaias    2020080400
 Laura     2020082712
-Sally     2020091712
+Sally     2020091709
 Delta     2020101012
 Zeta      2020102900
 Claudette 2021061906
