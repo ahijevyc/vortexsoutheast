@@ -158,7 +158,8 @@ quiver          = args.quiver
 spc_td          = datetime.timedelta(hours=args.spctd)
 
 logger = logging.getLogger()
-logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
+# force=True overrules root logger instantiated by metpy
+logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO, force=True)
 if debug:
     logger.setLevel(logging.DEBUG)
 
@@ -170,6 +171,7 @@ if args.ofile:
 else:
     ofile = "./"+".".join([x for x in [fill, line, barb, quiver] if x]) + '.png'
 if netcdf:
+    os.makedirs(os.path.dirname(netcdf), exist_ok=True)
     netcdf = os.path.realpath(netcdf)
 
 # If png already exists skip this file
@@ -182,8 +184,8 @@ if not clobber and os.path.isfile(ofile) and netcdf and os.path.isfile(netcdf):
 daz = 1# azimuth bin width (delta azimuth)
 dr  = 40# range bin width (delta range)
 dr_units = "km"
-pbot = 850*units("hPa") # for wind shear coordinate
-ptop = 200*units("hPa")
+pbot = 850*units.hPa # for wind shear coordinate
+ptop = 200*units.hPa
 fineprint_string = f"daz: {daz}$\degree$   dr: {dr}{dr_units}   layer for wind shear coordinate:{ptop:~}-{pbot:~}"
 azbins = np.arange(0,360+daz,daz)
 theta_lines = range(0,360,45)
@@ -246,16 +248,17 @@ for istorm, storm in enumerate(stormlist):
     stormname_year = f"{stormname} {year}"
     # Read TC tracks from IBTrACS
     trackdf, best_track_file = ibtracs.get_df(stormname, year, basin="NA") # North Atlantic basin guaranteed for NARR
-    extension = ibtracs.extension(stormname, year)
-    trackdf = pd.concat([trackdf, extension], ignore_index=True)
     # Considered interpolating to 3H but IBTrACS already has data every 3H for most storms.
     # IBTRaCS is not guaranteed to have every 3H, only every 6H.
-    trackdf.valid_time = trackdf.valid_time.apply(pytz.utc.localize) # make timezone-aware even without spc reports
-    # ignore 50 and 64 knot rad lines. Keep 0 and 34-knot lines.Yes, there are 0-knot lines. rad is a string 
-    trackdf = trackdf[trackdf.rad.astype("float") <= 35] # Gabrielle 2001 atcf bal082001.dat has "35" knot winds, not 34. As a quick-fix, just use 35 as the comparison number.
+    # ignore 50 and 64 knot rad lines. Keep 34-knot lines
+    trackdf = trackdf[trackdf.rad == 34]
     stormname_years.append(stormname_year) # used for composite title
-    logging.info(f"{stormname_year} {trackdf.valid_time.min()} to {trackdf.valid_time.max()} ({trackdf.valid_time.max() - trackdf.valid_time.min()})")
+    duration = trackdf.valid_time.max() - trackdf.valid_time.min()
+    logging.info(f"{stormname_year} {trackdf.valid_time.min()} to {trackdf.valid_time.max()} ({duration})")
     
+    if narrtime > trackdf.valid_time.max():
+        logging.warning(f"requested NARR time {narrtime} is after {stormname_year} ends")
+        trackdf = ibtracs.getExt(stormname, year, trackdf, [narrtime])
 
     # Make sure all times in time list are within the TC track time window.
     assert trackdf.valid_time.min() <= narrtime <= trackdf.valid_time.max(), f"requested time {narrtime} is outside TC track time window."
@@ -276,14 +279,16 @@ for istorm, storm in enumerate(stormlist):
     lat1 = track["lat"] * units.degrees_N
     lon1 = track["lon"] * units.degrees_E
     storm_heading = track["heading"] * units.degrees
-    storm_speed = track["speed"] * units.parse_expression("knots").to("m/s")
+    storm_speed = (track["speed"] * units.kts).to("m/s")
 
     origin_place_time = f'({lat1.m:.1f}$\degree$N, {lon1.m:.1f}$\degree$E) {valid_time.strftime("%Y-%m-%d %H UTC")}'
     logging.debug(f'({lat1:~}, {lon1:~}) {valid_time.strftime("%Y-%m-%d %H UTC")}')
 
-    # tack on valid_time and TC center coordinates.
+    # tack on valid_time and TC center coordinates to snapshot name.
     bname, ext = os.path.splitext(ofile)
-    snapshot = f'{bname}.{valid_time.strftime("%Y%m%d%H")}.{lat1.m:04.1f}N{lon1.m:06.1f}E{ext}'
+    snapshotdir = os.path.join(os.path.dirname(bname), "snapshots")
+    os.makedirs(snapshotdir, exist_ok=True)
+    snapshot = os.path.join(snapshotdir, os.path.basename(bname) + f'.{valid_time.strftime("%Y%m%d%H")}.{lat1.m:04.1f}N{lon1.m:06.1f}E{ext}')
     supt = figplr.suptitle(stormname_year + "\n" + origin_place_time, wrap=True, fontsize="small")
 
     # Used to skip this file If png already exists but we don't want to have incomplete composite.
@@ -330,9 +335,7 @@ for istorm, storm in enumerate(stormlist):
     # .load() to avoid Userwarning about passing obj to dask.array that is already a Dask collection.
     lon, lat = data.metpy.longitude.load(), data.metpy.latitude.load()
     dist_from_center, bearing = atcf.dist_bearing(lon1, lat1, lon, lat)
-    if dist_from_center.min() > 32*units.km:
-        logging.error(f"at {valid_time} {stormname_year} more than {dist_from_center.min()} from nearest NARR grid point")
-        sys.exit(1)
+    assert dist_from_center.min() <= 32*units.km, f"at {valid_time} {stormname_year} > {dist_from_center.min():~.1f} from nearest NARR grid point"
 
     if cart or debug:
         logging.info("cartopy view for debugging...")
@@ -515,7 +518,7 @@ hours_str = " & ".join(sorted(list(set(hours_str))))
 uniq_stormname_years = list(set(stormname_years))
 # sort by year first, then name 
 sorted_storms = sorted(uniq_stormname_years, key=lambda x: tuple(x.split()[::-1]))
-fontsize = "xx-small" if len(stormname_years) < 20 else 5
+fontsize = "xx-small" if len(stormname_years) < 20 else 4.5
 figplr.suptitle(", ".join(sorted_storms) + "\n" + hours_str, fontsize=fontsize) # Clean title w/o origin place and time
 
 # avoid spiral artifact when pcolor ignores entire columns of nan. pcolor.get_array() does not include nans in PolyCollection.

@@ -5,6 +5,7 @@ import logging
 import metpy
 from metpy.units import units
 import narr
+import ncl
 import numpy as np
 import os
 import pandas as pd 
@@ -23,7 +24,7 @@ def main():
     debug = args.debug
     ifile = args.ifile
 
-    logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
+    logging.basicConfig(format='%(asctime)s %(message)s', level=logging.WARNING, force=True)
     if debug:
         logger = logging.getLogger().setLevel(logging.DEBUG)
 
@@ -34,6 +35,7 @@ def main():
     df["narrtime"] = pd.to_datetime(df["narrtime"], format="%Y%m%d%H", utc=True)
 
     all_tracks, best_track_file = ibtracs.get_df(basin="NA") # North Atlantic basin guaranteed for NARR
+    all_tracks = all_tracks[all_tracks.rad == 34]
 
     logging.info(f"got {len(all_tracks)} track data from {best_track_file}")
 
@@ -42,6 +44,7 @@ def main():
     u, v = metpy.calc.wind_components(avg.wind_shear_speed*units.meter/units.second, avg.wind_shear_heading * units.deg + 180*units.deg)
     print(f"avg u={u:~.2f} avg v={v:~.2f} avg shear mag={avg.wind_shear_speed:.2f}")
 
+fmt = '%Y%m%d%H'
 def getTCFlow(df, all_tracks):
     stormname, narrtime = df.name
     year = narrtime.year
@@ -49,22 +52,26 @@ def getTCFlow(df, all_tracks):
     file_ncl = narr.get(narrtime, narrtype=narr.narr3D, targetdir=os.path.join("/glade/scratch",os.getenv('USER'),"NARR"))
     imatch = (all_tracks['stormname'] == stormname.upper()) & (all_tracks['valid_time'].dt.year == year)
     trackdf = all_tracks[imatch]
-    extension = ibtracs.extension(stormname, year)
-    trackdf = pd.concat([trackdf, extension], ignore_index=True)
-    trackdf["valid_time"] = trackdf.valid_time.apply(pytz.utc.localize) # make timezone-aware even without spc reports
-    trackdf = trackdf[trackdf.rad.astype("float") <= 35]
+    if narrtime > trackdf.valid_time.max():
+        trackdf = ibtracs.getExt(stormname, year, trackdf, [narrtime])
     trackdf = trackdf[trackdf.valid_time == narrtime]
-    pbot = 850
-    ptop = 200
-    rx = 4.5
-    TCFlow_csv = os.path.join(os.path.dirname(file_ncl), 
-            f"{stormname}.{narrtime.strftime('%Y%m%d%H')}.{pbot}-{ptop}hPa.{rx:.1f}degrees.000.csv") 
+    pbot = 850*units.hPa
+    ptop = 200*units.hPa
+    rx = 4.5 # no units (like NARR_composite.py)
+    TCFlow_csv = os.path.join(os.path.dirname(file_ncl),
+            f"{stormname}.{narrtime.strftime(fmt)}.{pbot.m:.0f}-{ptop.m:.0f}hPa.{rx:.1f}degrees.000.csv") 
     if os.path.exists(TCFlow_csv):
         logging.debug(f"use existing TCFlow csv file {TCFlow_csv}")
         TCFlow = pd.read_csv(TCFlow_csv)
     else:
-        logging.info(f"no TCFlow csv file {TCFlow_csv} making it.")
-        TCFlow = ncl.steering_flow(lat0=trackdf.lat,lon0=trackdf.lon,storm_heading=trackdf.heading,storm_speed=track_df.speed,
+        logging.warning(f"no {stormname} {narrtime.strftime(fmt)} TCFlow csv file {TCFlow_csv} making it.")
+        # make dataframe a series (just like in NARR_composite.py)
+        track = trackdf.squeeze()
+        lat0=track.lat*units.degrees_N
+        lon0=track.lon*units.degrees_E
+        storm_heading=track.heading*units.deg
+        storm_speed = (track.speed*units.kts).to("m/s")
+        TCFlow = ncl.steering_flow(lat0=lat0,lon0=lon0,storm_heading=storm_heading,storm_speed=storm_speed,
                 stormname=stormname, rx=rx, ensmember=stormname, ptop=ptop, pbot=pbot, file_ncl=file_ncl)
     return TCFlow
 if __name__ == "__main__":

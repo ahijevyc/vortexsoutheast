@@ -2,22 +2,20 @@
 
 # Composite NARR for many fields, times, and storms
 
+set repo=/glade/scratch/ahijevyc/vortexsoutheast
 
 # Storm and time lists written to this directory
-set stormlistdir=/glade/scratch/ahijevyc/vortexsoutheast/stormtimelist
+set stormlistdir=$repo/stormtimelist
 
 # plots written to this directory
-set odir=/glade/scratch/ahijevyc/trier/VSE
-
-# Best tracks - atcf format
-set atcf=/glade/work/ahijevyc/atcf/archive
+set odir=$repo/output/composites
 
 # option to normalize radial dimension
 set normalize_str=""
 #set normalize_str="--normalize_by Vt500km"
 
 # Hours in time window
-set time_window_hours=6
+set time_window_hours=24
 set anchor_hour=0
 
 set CM1=../CM1_input_fields.txt
@@ -32,7 +30,7 @@ end
 # You don't need to change --ofile and --netcdf arguments yourself. 
 
 
-foreach filllinebarb (`cat /glade/scratch/ahijevyc/vortexsoutheast/scripts/filllinebarb.txt` `cat $CM1`)
+foreach filllinebarb (`cat $repo/scripts/filllinebarb.txt` `cat $CM1`)
 
     
     # substitution operator. Turn slashes to spaces so array can be set.
@@ -63,6 +61,7 @@ foreach filllinebarb (`cat /glade/scratch/ahijevyc/vortexsoutheast/scripts/filll
     endif
 
     # Loop through diurnal cycle
+    @ i_time_window = 0
     foreach h (`seq 0 $time_window_hours 21`)
         # add anchor_hour and take modulo 24
         set h=`echo "($h+$anchor_hour)%24" |bc`
@@ -96,19 +95,17 @@ module reset
 module load ncl
 conda activate
 END
-
-        foreach desc (../categories/*.txt)
-            set desc=`dirname $desc`/`basename $desc .txt`
-            set a=$stormlistdir/$desc.${hh}z.txt
-            if (! -s $a) then
-                python /glade/scratch/ahijevyc/vortexsoutheast/scripts/get_diurnal_hour.py /glade/scratch/ahijevyc/vortexsoutheast/categories/$desc.txt $diurnal_hours > $a 
-            endif
-            echo python NARR_composite.py --fill $fill $lineargs $barbargs $a $normalize_str --ofile $odir/$desc.$fill.$line$barb${hh}z.png --netcdf $odir/nc/$desc.$fill.${hh}z.nc >> $batch
+        foreach category (../categories/*.txt)
+            set desc=`basename $category txt`
+            set a=$TMPDIR/$desc${hh}z.txt # Time-saving measure, but If you update stormlists, remove old versions of this.
+            # Not sure if diurnal_hours.py is any better or faster than get_diurnal_hour.py
+            if (! -s $a) python $repo/scripts/diurnal_hours.py $category $anchor_hour $time_window_hours $i_time_window
+            echo python $repo/scripts/NARR_composite.py --fill $fill $lineargs $barbargs $a $normalize_str --ofile $odir/$desc$fill.$line$barb${hh}z.png --netcdf $odir/nc/$desc$fill.${hh}z.nc >> $batch
         end
+        @ i_time_window++
 
 
-
-        echo qsub $batch \; sleep 2
+        echo qsub $batch
     end
-
+    
 end

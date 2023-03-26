@@ -49,32 +49,6 @@ def tc_coords(df, trackdf):
     df["dist_from_origin"] = dist_from_origin
     return df
 
-def getExt(stormname,year,trackdf, narrtimes):
-    etxt = f"../inland_tc_position_dat/{stormname}.{year}.txt"
-    if not os.path.exists(etxt):
-        logging.error(f"{etxt} not found")
-        return trackdf
-    trackdf = trackdf.set_index("valid_time")
-    # first 3-hrly time after track ends. add second to ensure it is greater than last track time.
-    first_oob_narrtime = (trackdf.index.max()+pd.Timedelta(1,unit='s')).ceil(freq="3H")
-    logging.warning(f"first out-of-bounds narrtime is {first_oob_narrtime}")
-    extend = index=pd.date_range(start=first_oob_narrtime, 
-        end=narrtimes[-1], freq='3H', tz="UTC", name="valid_time")
-    logging.warning(f"append {extend.min()}-{extend.max()}")
-    trackdf = pd.concat([trackdf, pd.DataFrame(index=extend)], axis="index")
-    # combine Roger's locations
-    logging.warning(f"opening {etxt} to get Roger's TC position at the time of tornado")
-    df = pd.read_csv(etxt, names=["valid_time", "lat", "lon"], delim_whitespace=True, date_parser=lambda x:pd.to_datetime(x,utc=True),
-            parse_dates=["valid_time"], index_col=0)
-    logging.warning(f"combining {len(df)} TC locations at torn times")
-    trackdf = trackdf.combine_first(df).sort_index()
-    trackdf["lat"] = trackdf["lat"].interpolate() # forward-fill last position
-    trackdf["lon"] = trackdf["lon"].interpolate()
-    trackdf = trackdf.reset_index()
-    trackdf = trackdf[trackdf.valid_time.isin(narrtimes)]
-    return trackdf
-
-
 logging.info(f"ifile {ifile}")
 df = pd.read_csv(ifile, delim_whitespace=True, names=["stormname", "narrtime"])
 df["narrtime"] = pd.to_datetime(df["narrtime"], format="%Y%m%d%H", utc=True)
@@ -88,6 +62,8 @@ all_storm_reports = spc.get_storm_reports(start=pd.to_datetime("19900101",utc=Tr
 epoch = pd.to_datetime("19700101", utc=True)
 f = ((all_storm_reports["time"] + spc_td - epoch) / (spc_td*2) ).astype(int)
 all_storm_reports["time"] = epoch + f * (spc_td*2)
+
+TCTOR = spc.getTCTOR()
 
 logging.info("Load ibtracs (subsample later).")
 all_tracks, best_track_file = ibtracs.get_df(basin="NA") # North Atlantic basin guaranteed for NARR
@@ -134,7 +110,7 @@ for (stormname, year), group in df.groupby(["stormname","year"]):
     in_narr = trackdf.valid_time.isin(narrtimes)
     if in_narr.sum() < 8:
         logging.warning(f"only {in_narr.sum()} track times in {narrtime0.strftime(fmt)} diurnal cycle. checking extensions")
-        trackdf = getExt(stormname,year,trackdf,narrtimes)
+        trackdf = ibtracs.getExt(stormname,year,trackdf,narrtimes)
         in_narr = trackdf.valid_time.isin(narrtimes)
     trackdf = trackdf[in_narr] # drop tracktimes not in narrtimes array
     logging.info(f"plot_track #{number} {stormname} for {narrtime0.strftime(fmt)} diurnal cycle")
@@ -152,6 +128,10 @@ for (stormname, year), group in df.groupby(["stormname","year"]):
     s = stormrpts_twin.groupby("time", group_keys=False).apply(tc_coords,trackdf)
     s = s[s.dist_from_origin < 800]
     logging.info(f"{len(s)} storm reports near {stormname} {year}")
+
+    TCTOR_twin = TCTOR[(TCTOR.time >= start) & (TCTOR.time < end)]
+    if len(s) != len(TCTOR_twin):
+        pdb.set_trace()
     stormrpts.append(s)
     legend_items = spc.plot(s, axc, scale=5, alpha=1, onecolor=onecolor)
 

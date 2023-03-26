@@ -608,7 +608,7 @@ def scalardata(field: str, valid_time: datetime.datetime, targetdir: str = targe
 def vectordata(field, valid_time, targetdir=targetdir):
     # Get color map, levels, and netCDF variable name appropriate for requested variable (from fieldinfo module).
     info = fieldinfo[field]
-    logging.info(f"vectordata(): field={field} info={info}")
+    logging.debug(f"vectordata(): field={field} info={info}")
     if field.startswith("shr"):
         u,v = shear(field, valid_time, targetdir=targetdir)
         u = temporal(u, info) # shear doesn't apply temporal like scalardata does.
