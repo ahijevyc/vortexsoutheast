@@ -1,13 +1,16 @@
+Jerry     1995082400
 Fran      1996090612
 Charley   1998082212
 Dennis    1999090412
+Edouard   2002090500
 Hanna     2002091412
 Claudette 2003071512
 Grace     2003083112
 Isabel    2003091818
-Matthew   2004101009
+Matthew   2004101012
 Arlene    2005061118
 Dennis    2005071100
+Tammy     2005100600
 Humberto  2007091312
 Edouard   2008080512
 Sandy     2012103000

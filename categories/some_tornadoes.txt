@@ -2,8 +2,11 @@ Allison   1995060512
 Dean      1995073100
 Bret      1999082300
 Barry     2001080606
+Ernesto   2006090100
 Erin      2007081812
+Dolly     2008072318
 Beryl     2012052912
+Alberto   2016053006
 Gordon    2018090812
 Nestor    2019101912
 Hanna     2020072521
