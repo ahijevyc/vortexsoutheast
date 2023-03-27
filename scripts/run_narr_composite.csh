@@ -85,8 +85,8 @@ foreach filllinebarb (`cat $repo/scripts/filllinebarb.txt` `cat $CM1`)
 #PBS -e $TMPDIR/$fill.$line$hh.err
 #PBS -o $TMPDIR/$fill.$line$hh.out
 #PBS -q casper
-#PBS -l walltime=06:00:00
-#PBS -l select=1:ncpus=1:mem=4GB
+#PBS -l walltime=08:00:00
+#PBS -l select=1:ncpus=1:mem=5GB
 
 setenv TMPDIR /glade/scratch/$USER/temp
 mkdir -p $TMPDIR

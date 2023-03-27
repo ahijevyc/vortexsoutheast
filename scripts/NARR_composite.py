@@ -563,12 +563,13 @@ for ax in [northax, stormmotionax, windshearax]:
         lsr_heading = xrpts["heading"].values * units.deg 
         lsr_range  = xrpts["range"].values * units.km
 
+        n_unique_locs = len(xrpts.drop_duplicates(subset=["slon","slat"]))
         nrpts = len(xrpts)
         labels.append(f"{event_type} ({nrpts})") # append total number of events to legend label
         logging.info(f"centroid of {ax} coord {nrpts} {event_type} reports\n{spc.centroid_polar(lsr_heading, lsr_range)}")
-        if nrpts < 3:
+        if n_unique_locs < 3:
             if ax is northax:
-                logging.info(f"{nrpts} {event_type} reports not enough for kde (require at least 3)")
+                logging.info(f"{n_unique_locs} unique {event_type} report locations. Not enough for kde (requires >= 3 non-colinear locations)")
             continue # continue for all ax, regardless of whether ax is northax
         # Try to plot kde
         rptx = lsr_range * np.cos(lsr_heading)
