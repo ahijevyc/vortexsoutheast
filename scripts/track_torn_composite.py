@@ -91,7 +91,7 @@ for (stormname, year), group in df.groupby(["stormname","year"]):
     trackdf = all_tracks[imatch]
     fmt='%Y%m%d %H%Mz'
     tracktimes = trackdf.valid_time
-    logging.info(f"{stormname} {year} {len(trackdf)} times "
+    logging.debug(f"{stormname} {year} {len(trackdf)} times "
                  f"[{tracktimes.min().strftime(fmt)},{tracktimes.max().strftime(fmt)}]")
 
 
@@ -118,10 +118,10 @@ for (stormname, year), group in df.groupby(["stormname","year"]):
 
     start = narrtimes.min()-spc_td
     end   = narrtimes.max()+spc_td
-    logging.info(f"storm reports [{start.strftime(fmt)},{end.strftime(fmt)})")
+    logging.debug(f"storm reports [{start.strftime(fmt)},{end.strftime(fmt)})")
     twin = (all_storm_reports.time >= start ) & (all_storm_reports.time < end)
     if not any(twin):
-        logging.warning(f"no storm reports")
+        logging.info(f"no storm reports")
         continue
     stormrpts_twin = all_storm_reports[twin]
     # restrict reports to within 800 km of TC
@@ -129,9 +129,12 @@ for (stormname, year), group in df.groupby(["stormname","year"]):
     s = s[s.dist_from_origin < 800]
     logging.info(f"{len(s)} storm reports near {stormname} {year}")
 
-    TCTOR_twin = TCTOR[(TCTOR.time >= start) & (TCTOR.time < end)]
+    TCTOR_twin = TCTOR[(TCTOR.time >= start) & (TCTOR.time < end) & (TCTOR["Tor-Center Dist km (from Worksheet)"] < 800) & (TCTOR["TC Name"] == f"{stormname}-{year%100:02d}")]
     if len(s) != len(TCTOR_twin):
-        pdb.set_trace()
+        logging.warning(f"{len(s)} SPC, but {len(TCTOR_twin)} TCTOR reports")
+        if abs(len(s) - len(TCTOR_twin)) > 1:
+            print(s)
+            print(TCTOR_twin)
     stormrpts.append(s)
     legend_items = spc.plot(s, axc, scale=5, alpha=1, onecolor=onecolor)
 
