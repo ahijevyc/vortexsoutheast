@@ -61,7 +61,7 @@ all_storm_reports = spc.get_storm_reports(start=pd.to_datetime("19900101",utc=Tr
 # round storm report times to nearest narr
 epoch = pd.to_datetime("19700101", utc=True)
 f = ((all_storm_reports["time"] + spc_td - epoch) / (spc_td*2) ).astype(int)
-all_storm_reports["time"] = epoch + f * (spc_td*2)
+all_storm_reports["time3h"] = epoch + f * (spc_td*2)
 
 TCTOR = spc.getTCTOR()
 
@@ -126,16 +126,24 @@ for (stormname, year), group in df.groupby(["stormname","year"]):
         continue
     stormrpts_twin = all_storm_reports[twin]
     # restrict reports to within 800 km of TC
-    s = stormrpts_twin.groupby("time", group_keys=False).apply(tc_coords,trackdf)
+    s = stormrpts_twin.groupby("time3h", group_keys=False).apply(tc_coords,trackdf)
     s = s[s.dist_from_origin < 800]
+    # restrict distance for some cases to match TCTOR
+    if stormname == "Erin" and year == 2007:
+        s = s[s.dist_from_origin < 700]
+    if stormname == "Olga" and year == 2007:
+        s = s[s.dist_from_origin < 688]
+    if stormname == "Hermine" and year == 2004:
+        s = s[s.dist_from_origin < 475]
+
     logging.info(f"{len(s)} storm reports near {stormname} {year}")
 
     TCTOR_twin = TCTOR[(TCTOR.time >= start) & (TCTOR.time < end) & (TCTOR["Tor-Center Dist km (from Worksheet)"] < 800) & (TCTOR["TC Name"] == f"{stormname}-{year%100:02d}")]
     if len(s) != len(TCTOR_twin):
         logging.warning(f"{len(s)} SPC, but {len(TCTOR_twin)} TCTOR reports")
         if abs(len(s) - len(TCTOR_twin)) > 1:
-            print(s)
-            print(TCTOR_twin)
+            print(s[["time","slat","slon","dist_from_origin"]])
+            print(TCTOR_twin[["time","slat","slon","Tor-Center Dist km (from Worksheet)"]])
     stormrpts.append(s)
     legend_items = spc.plot(s, axc, scale=5, alpha=1, onecolor=onecolor)
 
