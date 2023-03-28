@@ -1,6 +1,7 @@
 Allison   1995060512
 Dean      1995073100
 Erin      1995080203
+Jerry     1995082400
 Opal      1995100421
 Fran      1996090612
 Danny     1997072312
@@ -14,6 +15,7 @@ Helene    2000092212
 Allison   2001061212
 Barry     2001080606
 Gabrielle 2001091412
+Edouard   2002090500
 Fay       2002090706
 Hanna     2002091412
 Lili      2002100312
@@ -31,9 +33,12 @@ Cindy     2005070612
 Dennis    2005071100
 Katrina   2005082912
 Rita      2005092412
+Tammy     2005100600
 Alberto   2006061312
+Ernesto   2006090100
 Erin      2007081812
 Humberto  2007091312
+Dolly     2008072318
 Edouard   2008080512
 Gustav    2008090112
 Ike       2008091312
@@ -43,6 +48,7 @@ Beryl     2012052912
 Sandy     2012103000
 Ana       2015051012
 Bill      2015061912
+Alberto   2018053006
 Hermine   2016090209
 Cindy     2017062303
 Harvey    2017082612

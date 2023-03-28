@@ -88,6 +88,7 @@ for (stormname, year), group in df.groupby(["stormname","year"]):
     narrtime0 = pd.to_datetime(group.narrtime.values[0])
     narrtimes = pd.date_range(start=narrtime0, end=narrtime0 + pd.Timedelta(21, unit="hour"), freq="3H", tz='UTC')
     imatch = (all_tracks['stormname'] == stormname.upper()) & (all_tracks['valid_time'].dt.year == year) & (all_tracks["rad"] == 34)
+    assert imatch.sum(), f"no matching IBTRACS for {stormname.upper()} {year}"
     trackdf = all_tracks[imatch]
     fmt='%Y%m%d %H%Mz'
     tracktimes = trackdf.valid_time
