@@ -28,7 +28,7 @@ Gaston    2004083012
 Frances   2004090712
 Ivan      2004091612
 Jeanne    2004092712
-Matthew   2004101012
+Matthew   2004101009
 Arlene    2005061118
 Cindy     2005070612
 Dennis    2005071100
