@@ -127,3 +127,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# made by run_narr_composite.csh on the fly
+CM1_input_fields.txt
+output
