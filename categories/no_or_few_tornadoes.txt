@@ -1,7 +1,8 @@
 Jerry     1995082400
 Fran      1996090612
 Charley   1998082212
-Dennis    1999090412
+Dennis    1999090421
+Bertha    2002080506
 Edouard   2002090500
 Hanna     2002091412
 Claudette 2003071512
@@ -16,4 +17,5 @@ Edouard   2008080512
 Sandy     2012103000
 Ana       2015051012
 Barry     2019071315
+Bertha    2020052712
 Zeta      2020102900

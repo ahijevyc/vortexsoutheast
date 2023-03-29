@@ -1,7 +1,6 @@
 Dolly      1996082312
 Harvey     1999092300
 Michelle   2001110506
-Bertha     2002080506
 Gustav     2002091012
 Henri      2003090518
 Alex       2004080312
@@ -18,6 +17,5 @@ Bonnie     2016053012
 Julia      2016091312
 Matthew    2016100800
 Emily      2017073115
-Bertha     2020052712
 Fay        2020071021
 Mindy      2021090900
