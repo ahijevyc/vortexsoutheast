@@ -17,6 +17,7 @@ def main():
     # =============Arguments===================
     parser = argparse.ArgumentParser(description = "NARR env shear", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("-d", "--debug", action='store_true')
+    parser.add_argument("-n", action='store_true', help='list missing storm and times but do not fill them')
     parser.add_argument("ifile", help="text file. each line starts with a storm name, followed by a yyyymmddhh time")
 
     # Assign arguments to simple-named variables
@@ -39,13 +40,13 @@ def main():
 
     logging.info(f"got {len(all_tracks)} track data from {best_track_file}")
 
-    out = df.groupby(["stormname","narrtime"], group_keys=False).apply(getTCFlow, all_tracks)
+    out = df.groupby(["stormname","narrtime"], group_keys=False).apply(getTCFlow, all_tracks, args)
     avg = out.mean(numeric_only=True)
     u, v = metpy.calc.wind_components(avg.wind_shear_speed*units.meter/units.second, avg.wind_shear_heading * units.deg + 180*units.deg)
     print(f"avg u={u:~.2f} avg v={v:~.2f} avg shear mag={avg.wind_shear_speed:.2f}")
 
 fmt = '%Y%m%d%H'
-def getTCFlow(df, all_tracks):
+def getTCFlow(df, all_tracks, args):
     stormname, narrtime = df.name
     year = narrtime.year
     logging.debug(f"{stormname} {narrtime} {year}")
@@ -65,6 +66,8 @@ def getTCFlow(df, all_tracks):
         TCFlow = pd.read_csv(TCFlow_csv)
     else:
         logging.warning(f"no {stormname} {narrtime.strftime(fmt)} TCFlow csv file {TCFlow_csv} making it.")
+        if args.n:
+            return
         # make dataframe a series (just like in NARR_composite.py)
         track = trackdf.squeeze()
         lat0=track.lat*units.degrees_N

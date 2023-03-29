@@ -1,5 +1,7 @@
 #!/bin/csh
 
+conda activate
+
 # Composite NARR for many fields, times, and storms
 
 set repo=/glade/scratch/ahijevyc/vortexsoutheast
@@ -15,7 +17,8 @@ set normalize_str=""
 #set normalize_str="--normalize_by Vt500km"
 
 # Hours in time window
-set time_window_hours=24
+set time_window_hours=6
+@ walltime = ( 6 + $time_window_hours / 6 )
 set anchor_hour=0
 
 set CM1=../CM1_input_fields.txt
@@ -85,7 +88,7 @@ foreach filllinebarb (`cat $repo/scripts/filllinebarb.txt` `cat $CM1`)
 #PBS -e $TMPDIR/$fill.$line$hh.err
 #PBS -o $TMPDIR/$fill.$line$hh.out
 #PBS -q casper
-#PBS -l walltime=08:00:00
+#PBS -l walltime=${walltime}:00:00
 #PBS -l select=1:ncpus=1:mem=5GB
 
 setenv TMPDIR /glade/scratch/$USER/temp
@@ -97,15 +100,17 @@ conda activate
 END
         foreach category (../categories/*.txt)
             set desc=`basename $category txt`
-            set a=$TMPDIR/$desc${hh}z.txt # Time-saving measure, but If you update stormlists, remove old versions of this.
+            set a=$TMPDIR/$desc${hh}z.txt 
+            # if category storm list is newer, redo diurnal cycle ztxt file $a
             # Not sure if diurnal_hours.py is any better or faster than get_diurnal_hour.py
-            if (! -s $a) python $repo/scripts/diurnal_hours.py $category $anchor_hour $time_window_hours $i_time_window
+            if (`stat -t -c '%Y' $category` >= `stat -t -c '%Y' $a`) python $repo/scripts/diurnal_hours.py $category $anchor_hour $time_window_hours $i_time_window
             echo python $repo/scripts/NARR_composite.py --fill $fill $lineargs $barbargs $a $normalize_str --ofile $odir/$desc$fill.$line$barb${hh}z.png --netcdf $odir/nc/$desc$fill.${hh}z.nc >> $batch
         end
         @ i_time_window++
 
 
-        echo qsub $batch
+        #echo qsub $batch
+        qsub $batch
     end
     
 end
