@@ -12,8 +12,8 @@ Olga       2007121512
 Hanna      2008090612
 Bonnie     2010072315
 Arlene     2011063000
-Colin      2016060612
 Bonnie     2016053012
+Colin      2016060612
 Julia      2016091312
 Matthew    2016100800
 Emily      2017073115
