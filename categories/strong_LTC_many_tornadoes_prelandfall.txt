@@ -7,9 +7,9 @@ Katrina   2005082803
 Rita      2005092206
 Gustav    2008083100
 Ike       2008091100
-Florence  2018091212
 Harvey    2017082500
 Irma      2017090812
+Florence  2018091212
 Michael   2018100912
 Laura     2020082603
 Sally     2020091412
