@@ -3,6 +3,10 @@
 conda activate
 
 # Composite NARR for many fields, times, and storms
+# meant to be run 3 times
+# 1) time_window_hours=6,  anchor_hour=0
+# 2) time_window_hours=12, anchor_hour=3
+# 3) time_window_hours=24, anchor_hour=0
 
 set repo=/glade/scratch/ahijevyc/vortexsoutheast
 
@@ -17,8 +21,8 @@ set normalize_str=""
 #set normalize_str="--normalize_by Vt500km"
 
 # Hours in time window
-set time_window_hours=6
-@ walltime = ( 6 + $time_window_hours / 6 )
+set time_window_hours=24
+@ walltime = ( 2 + $time_window_hours / 3 )
 set anchor_hour=0
 
 set CM1=../CM1_input_fields.txt
@@ -48,7 +52,7 @@ foreach filllinebarb (`cat $repo/scripts/filllinebarb.txt` `cat $CM1`)
     else
         # line contour argumements, and add line to output file name
         if ($line == sbcape) set lineargs="--line $line --clev 500 1000 2000" 
-        if ($line =~ shr10m_*) set lineargs="--line $line --clev 8 12 16 20" 
+        if ($line =~ shr10m_*) set lineargs="--line $line --clev 6 12 18 24" 
         if ($line == srh) set lineargs="--line $line --clev 150 200 300" 
         set line="$line."
     endif
@@ -85,8 +89,8 @@ foreach filllinebarb (`cat $repo/scripts/filllinebarb.txt` `cat $CM1`)
 #!/bin/csh
 #PBS -A NMMM0021
 #PBS -N $fill$hh$line
-#PBS -e $TMPDIR/$fill.$line$hh.err
-#PBS -o $TMPDIR/$fill.$line$hh.out
+#PBS -e $TMPDIR/$fill.$line$barb$hh.err
+#PBS -o $TMPDIR/$fill.$line$barb$hh.out
 #PBS -q casper
 #PBS -l walltime=${walltime}:00:00
 #PBS -l select=1:ncpus=1:mem=5GB

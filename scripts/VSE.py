@@ -1,5 +1,7 @@
 import glob
+from metpy.units import units
 import os
+import spc
 import sys
 
 workdir = "/glade/scratch/ahijevyc/vortexsoutheast/stormtimelist"
@@ -48,4 +50,18 @@ def centroids():
     for coord in pointlist:
         c.extend(pointlist[coord].keys()) 
     return set(c)
+
+def tc_coords(df, trackdf):
+    """
+    get distance from TC center for each storm report in df
+    """
+    i = trackdf.valid_time == df.name
+    assert i.sum(), f"no track times match {df.name}"
+    originlon = trackdf.loc[i,"lon"].values[0] * units.degrees_E
+    originlat = trackdf.loc[i,"lat"].values[0] * units.degrees_N
+    dist_from_origin, heading = spc.gdist_bearing(originlon, originlat, 
+            df["slon"].values * units.degrees_E, df["slat"].values * units.degrees_N)
+    df["dist_from_origin"] = dist_from_origin
+    return df
+
 

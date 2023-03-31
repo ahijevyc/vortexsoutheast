@@ -49,7 +49,7 @@ levs.extend([l * units.dimensionless for l in ['lev1', 'trop']])
 for lev in levs:
     for ws in ['wind', 'speed', 'u', 'v', 'vort', 'div']:
         f = fstr(ws,lev)
-        fieldinfo[f]['levels'] = range(2,36,2)
+        fieldinfo[f]['levels'] = range(2,34,2)
         fieldinfo[f]['cmap'] = readNCLcm('wind_17lev')
         if ws == 'vort':
             fieldinfo[f]['levels'] = np.arange(-4,40,4) 
