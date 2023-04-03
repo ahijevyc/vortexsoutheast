@@ -10,5 +10,4 @@ foreach f (../categories/*.txt ../categories/rejects/*.txt)
     python ../scripts/track_torn_composite.py $f --nolegend
     python ../scripts/track_torn_composite.py $f --onetrackcolor --ofile `basename $f txt`colorbytrack.legend.ps
     python ../scripts/track_torn_composite.py $f --nolegend --onetrackcolor --ofile `basename $f txt`colorbytrack.ps
-
 end
