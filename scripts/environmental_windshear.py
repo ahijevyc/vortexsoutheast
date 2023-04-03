@@ -1,5 +1,4 @@
 import argparse
-import atcf
 import ibtracs
 import logging
 import metpy

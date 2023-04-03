@@ -66,6 +66,7 @@ base, ext = os.path.splitext(ifile)
 axc.set_title(os.path.basename(base))
 stormrpts = []
 legendtracks = []
+fmt='%Y%m%d %H%Mz'
 
 colors = [None]
 if onetrackcolor:
@@ -82,7 +83,6 @@ for (year, stormname), group in df.groupby(["year", "stormname"]):
     imatch = (all_tracks['stormname'] == stormname.upper()) & (all_tracks['valid_time'].dt.year == year) & (all_tracks["rad"] == 34)
     assert imatch.sum(), f"no matching IBTRACS for {stormname.upper()} {year}"
     trackdf = all_tracks[imatch]
-    fmt='%Y%m%d %H%Mz'
     tracktimes = trackdf.valid_time
     logging.debug(f"{stormname} {year} {len(trackdf)} times "
                  f"[{tracktimes.min().strftime(fmt)},{tracktimes.max().strftime(fmt)}]")
@@ -173,9 +173,9 @@ if not onetrackcolor:
     TCleg = atcf.TClegend(axc)
 
 if ofile is None:
-    ofile = os.path.realpath(os.path.basename(base)+".ps")
+    ofile = os.path.basename(base)+".ps"
     if onetrackcolor:
         base, ext = os.path.splitext(ofile)
         ofile = base + ".colorbytrack.ps"
 plt.savefig(ofile)
-logging.info(f'created {ofile}')
+logging.info(f'created {os.path.realpath(ofile)}')
