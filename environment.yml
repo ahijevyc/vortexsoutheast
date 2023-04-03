@@ -1,0 +1,16 @@
+name: vortexsoutheast
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - conda
+  - python
+  - xarray
+  - cartopy
+  - metpy
+  - netcdf4
+  - dask
+  - pyarrow
+  - matplotlib
+  - seaborn
+prefix: /glade/u/home/ahijevyc/miniconda3
