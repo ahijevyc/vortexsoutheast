@@ -6,16 +6,12 @@ Tried import pygrib and working with grib file directly but the variables were n
 Instead, convert to netCDF with ncl_convert2nc.
 
 """
-import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import argparse
 import atcf
-import cartopy
-from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 from collections import defaultdict
 import datetime
-import gridlines
 import ibtracs
 import logging
 from metpy.units import units
@@ -120,21 +116,22 @@ def xr_list_mean(x):
 # =============Arguments===================
 parser = argparse.ArgumentParser(description = "Plot NARR", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("ifile", type=argparse.FileType('r'), help="text file. each line starts with a storm name, followed by a yyyymmddhh time")
-parser.add_argument("-b", "--barb", type=str, default= None, help='variable name for wind barb field')
+parser.add_argument("-b", "--barb", help='variable name for wind barb field')
 parser.add_argument("--cart", action='store_true', help="plot cartopy version (not TC-centric)")
 parser.add_argument("--clevels", type=float, nargs='+', default= [500, 1000, 2000, 3000, 4000, 5000, 10000], help='line contour levels')
 parser.add_argument("--clobber", action='store_true', help="overwrite any old outfile, if it exists")
 parser.add_argument("-d", "--debug", action='store_true')
 parser.add_argument("--dpi", type=int, default=250, help="dpi of image output")
 parser.add_argument("-e", "--extent", type=float, nargs=4, help="debug plot extent lonmin, lonmax, latmin, latmax", default=[-98, -74, 20, 38])
-parser.add_argument("-f", "--fill", type=str, default= 'shr10m_700hPa', help='variable name for contour fill field')
-parser.add_argument("-l", "--line", type=str, default=None, help='variable name for line contour field')
+parser.add_argument("-f", "--fill", default= 'shr10m_700hPa', help='variable name for contour fill field')
+parser.add_argument("-l", "--line", help='variable name for line contour field')
 parser.add_argument("--max_range", type=float, default=800., help="maximum range in km")
-parser.add_argument("--narrdir", type=str, default=os.path.join("/glade/scratch",os.getenv("USER"),"NARR"), help="directory to untar NARR into")
-parser.add_argument("--netcdf", type=str, default=None, help="netCDF file to write composite to")
+parser.add_argument("--narrdir", default=os.path.join("/glade/scratch",os.getenv("USER"),"NARR"), help="directory to untar NARR into")
+parser.add_argument("--netcdf", help="netCDF file to write composite to")
 parser.add_argument("--no-fineprint", action='store_true', help="Don't write details at bottom of image")
-parser.add_argument("-o", "--ofile", type=str, help="name of final composite image")
-parser.add_argument("-q", "--quiver", type=str, default= None, help='variable name for quiver field')
+parser.add_argument("-o", "--ofile", help="name of final composite image")
+parser.add_argument("-q", "--quiver", help='variable name for quiver field')
+parser.add_argument("--show_storm_rpt_scatter", action='store_true', help="show each storm report as a symbol, not just density")
 parser.add_argument("--spctd", type=float, default=1.5, help="hours on either side of valid time to show SPC storm reports")
 
 
@@ -146,7 +143,6 @@ clobber         = args.clobber
 lcontour_levels = args.clevels
 debug           = args.debug
 dpi             = args.dpi
-extent          = args.extent
 fill            = args.fill
 ifile           = args.ifile
 line            = args.line
@@ -155,6 +151,7 @@ narrdir         = args.narrdir
 netcdf          = args.netcdf
 no_fineprint    = args.no_fineprint
 quiver          = args.quiver
+show_storm_rpt_scatter = args.show_storm_rpt_scatter
 spc_td          = datetime.timedelta(hours=args.spctd)
 
 logger = logging.getLogger()
@@ -320,7 +317,7 @@ for istorm, storm in enumerate(stormlist):
     if line:
         linecontourdata = narr.scalardata(line, valid_time, targetdir=narrdir)
         # Add line contour description above color bar title
-        cbar_title += f"\nline: {desc(linecontourdata)}"
+        cbar_title += f"\nline: {desc(linecontourdata)} {lcontour_levels}"
     if barb:
         barbdata = narr.vectordata(barb, valid_time, targetdir=narrdir)
         barbdata = barbdata.metpy.convert_units(barbunits)
@@ -337,56 +334,13 @@ for istorm, storm in enumerate(stormlist):
     dist_from_center, bearing = atcf.dist_bearing(lon1, lat1, lon, lat)
     assert dist_from_center.min() <= 32*units.km, f"at {valid_time} {stormname_year} > {dist_from_center.min():~.1f} from nearest NARR grid point"
 
+
+
     if cart or debug:
-        logging.info("cartopy view for debugging...")
-        fig = plt.figure(num=2, clear=True)
-        logging.debug(f"fignums={plt.get_fignums()}")
-        axc = plt.axes(projection=cartopy.crs.LambertConformal())
-        axc.set_extent(extent, crs=cartopy.crs.PlateCarree()) 
+        narr.cartplot(args, lon, lat, dist_from_center, bearing, uvsel(data), storm, storm_reports, barbkwdict,
+                linecontourdata=uvsel(linecontourdata) if line else None,
+                barbdata=barbdata if barb else None)
 
-        cfill = axc.contourf(lon,lat,uvsel(data),levels=levels,cmap=cmap,norm=colors.BoundaryNorm(levels,cmap.N),transform=cartopy.crs.PlateCarree())
-        if line:
-            line_contour = axc.contour(lon,lat,uvsel(linecontourdata),levels=lcontour_levels,cmap=linecontourdata.attrs["cmap"],
-                    norm=colors.BoundaryNorm(lcontour_levels,linecontourdata.attrs["cmap"].N),transform=cartopy.crs.PlateCarree())
-            line_contour_labels = axc.clabel(line_contour, fontsize=linecontour_fontsize, fmt='%.0f')
-        axc.set_title(stormname_year)
-
-        # Color bar
-        cb = plt.colorbar(cfill, ax=axc, orientation='horizontal', shrink=0.55)
-        cb.ax.set_title(cbar_title, fontsize='xx-small')
-        cb.ax.tick_params(labelsize='xx-small')
-        cb.outline.set_linewidth(0.5) 
-
-        c = axc.contour(lon, lat, dist_from_center, levels=np.arange(0,max(rbins)+200,200), colors='black', alpha=0.8, transform=cartopy.crs.PlateCarree())
-        axc.clabel(c, fontsize='xx-small', fmt='%ikm')
-        c = axc.contour(lon, lat, bearing, levels=range(0,360,45), colors='black', alpha=0.8, transform=cartopy.crs.PlateCarree())
-        axc.clabel(c, fontsize='xx-small', fmt='%i')
-
-        axc.set_title(axc.get_title() + "  " + valid_time.strftime('%Y-%m-%d %H UTC'), fontsize='x-small')
-
-        if not storm_reports.empty:
-            legend_items = spc.plot(storm_reports, axc)
-            axc.legend(handles=legend_items.values()).set_title(storm_report_time_window_str, prop={'size':'4.5'})
-
-        # *must* call draw in order to get the axis boundary used to add ticks:
-        fig.canvas.draw()
-
-        # Define gridline locations and draw the lines using cartopy's built-in gridliner:
-        xticks = list(range(-160,-50,10))
-        yticks = list(range(0,65,5))
-        axc.gridlines(xlocs=xticks, ylocs=yticks, linewidth=0.4, alpha=0.8, linestyle='--')
-        axc.xaxis.set_major_formatter(LONGITUDE_FORMATTER) 
-        axc.yaxis.set_major_formatter(LATITUDE_FORMATTER)
-        gridlines.lambert_xticks(axc, xticks)
-        gridlines.lambert_yticks(axc, yticks)
-        axc.set_xlabel('')
-        axc.set_ylabel('')
-        axc.add_feature(cartopy.feature.STATES.with_scale('50m'), linewidth=0.35, alpha=0.55)
-        axc.add_feature(cartopy.feature.COASTLINE.with_scale('50m'), linewidth=0.5, alpha=0.55)
-        ocart = valid_time.strftime("cart.%Y%m%d%H.png")
-        plt.savefig(ocart)
-        logging.info(f'created {os.path.realpath(ocart)}')
-        plt.figure(1) # switch back to polar plots figure
 
     logging.debug("creating weighted and unweighted 2d histograms of theta and range...")
 
@@ -518,8 +472,8 @@ hours_str = " & ".join(sorted(list(set(hours_str))))
 uniq_stormname_years = list(set(stormname_years))
 # sort by year first, then name 
 sorted_storms = sorted(uniq_stormname_years, key=lambda x: tuple(x.split()[::-1]))
-fontsize = "xx-small" if len(stormname_years) < 20 else 4.5
-figplr.suptitle(", ".join(sorted_storms) + "\n" + hours_str, fontsize=fontsize) # Clean title w/o origin place and time
+fontsize = "xx-small" if len(stormname_years) < 20 else 4.3
+figplr.suptitle(", ".join(sorted_storms) + "  " + hours_str, fontsize=fontsize) # Clean title w/o origin place and time
 
 # avoid spiral artifact when pcolor ignores entire columns of nan. pcolor.get_array() does not include nans in PolyCollection.
 # shape of array ends up changing after pcolor is called if one column of values array is all nan.
@@ -556,10 +510,10 @@ for ax in [northax, stormmotionax, windshearax]:
     labels = [] # for legend
     kwdict = spc.symbol_dict()
     for event_type, xrpts in storm_rpt_dict[ax].groupby("event_type"):
-        show_storm_rpt_scatter = False
         if show_storm_rpt_scatter:
             pc = ax.scatter(np.radians(xrpts["heading"]), xrpts["range"], alpha=0.9, **kwdict[event_type])
             handles.append(pc) # PathCollection element for legend
+            continue # no kde if scatter is shown
         lsr_heading = xrpts["heading"].values * units.deg 
         lsr_range  = xrpts["range"].values * units.km
 
@@ -674,5 +628,3 @@ if netcdf:
 plt.savefig(ofile, dpi=dpi) 
 os.system("mogrify -colors 128 "+ofile)
 logging.info(f'created {os.path.realpath(ofile)}')
-
-

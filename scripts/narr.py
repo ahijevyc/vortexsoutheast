@@ -1,8 +1,10 @@
+import cartopy
 import datetime
 from fieldinfo import fieldinfo, readNCLcm
 import glob
 import itertools
 import logging
+import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from metpy.units import units 
 import metpy.calc as mcalc
@@ -13,6 +15,7 @@ import pandas as pd # used to label values along 'uv' dimension of vector datase
 import pdb
 import pytz
 import re
+import spc
 import subprocess
 import sys
 import tarfile
@@ -35,9 +38,6 @@ targetdir = os.path.join("/glade/scratch",os.getenv("USER"),"NARR")
 #   fname    : field variable name
 #   levels   : contour levels
 #   vertical : vertical level(s) to extract. These are either pint quantities with units. For layers: [bot, top], or string descriptions (e.g. "surface", "freezing level").
-
-# Remove 'filename' from all fieldinfo values. .pop will not return a KeyError if 'filename' is not present.
-[fieldinfo[f].pop('filename',None) for f in fieldinfo]
 
 def fstr(f,lev):
     return f"{f}{lev:~}".replace(" ","")
@@ -184,9 +184,11 @@ fieldinfo['wcfluxconv'] = {'fname':'WCCONV_221_ISBY_acc3h','levels':np.array(fie
 idir = "/glade/collections/rda/data/ds608.0/3HRLY/" # path to NARR
 #######################################################################
 
+# apply this to rename_dims to avoid UserWarning: Horizonal dim numbers not found...Defaulting to (..., Y, X) order.
+# Careful -- ncl_convert2nc names the x dimension gridy_221, and the y dimension gridx_221. 
 dims_dict=dict(
-        gridx_221="x",
-        gridy_221="y"
+        gridx_221="y", # Ny = 277
+        gridy_221="x"  # Nx = 349
         )
 
 # Get static NARR file, convert to netCDF.
@@ -249,6 +251,8 @@ def get(valid_time, targetdir=targetdir, narrtype=narr3D):
             ret = tar.extract(os.path.basename(narr_grb),path=targetdir)
         call_args = ["ncl_convert2nc", narr_grb, "-e", "grb", "-o", targetdir]
         logging.debug(call_args)
+        # Tried using pygrib or xarray.open_dataset(engine="cfgrib"), but neither was as good as ncl_convert2nc, even though
+        # ncl_convert2nc calls the x dimension gridy_221 and y dimension gridx_221
         subprocess.check_call(call_args)
     return narr 
 
@@ -488,16 +492,13 @@ def scalardata(field: str, valid_time: datetime.datetime, targetdir: str = targe
     ifiles = [get(valid_time, targetdir=targetdir, narrtype=narrtype) for narrtype in [narrSfc, narrFlx, narrPBL, narr3D]]
 
     logging.debug(f"about to open {ifiles}")
-    nc = xarray.open_mfdataset(ifiles)
+    nc = xarray.open_mfdataset(ifiles).metpy.parse_cf()
 
     # Avoid UserWarning: Horizontal dimension numbers not found.
     logging.debug(f"rename {dims_dict}")
     nc = nc.rename_dims(dims_dict=dims_dict)
 
-    # .load() to avoid UserWarning: Passing an object to dask.array.from_array which is already a Dask collection. This can lead to unexpected behavior.
-    logging.debug(f'load {info["fname"]}')
-
-    data = nc[info["fname"]].load().metpy.quantify()
+    data = nc[info["fname"]]
     # Define data array. Speed and shear derived differently.
     # Define 'long_name' attribute
    
@@ -506,16 +507,19 @@ def scalardata(field: str, valid_time: datetime.datetime, targetdir: str = targe
         v = data[info["fname"][1]]
         data = mcalc.wind_speed(u,v)
         data.attrs['long_name'] = "wind speed"
-    elif field.startswith("div"):
-        u = data[info["fname"][0]]
-        v = data[info["fname"][1]]
-        data = mcalc.divergence(u,v) * 1e5
-        data.attrs['long_name'] = "divergence * 1e5"
-    elif field.startswith("vort"):
-        u = data[info["fname"][0]]
-        v = data[info["fname"][1]]
-        data = mcalc.vorticity(u,v) * 1e5
-        data.attrs['long_name'] = "vorticity * 1e5"
+    elif field.startswith("div") or field.startswith("vort"):
+        # TODO: why don't mcalc.div and vort work with vertical dimension? Have to sel a single level before calling them.
+        u = data[info["fname"][0]].sel(lv_ISBL0=info["vertical"])
+        v = data[info["fname"][1]].sel(lv_ISBL0=info["vertical"])
+        lats = nc.gridlat_221
+        lons = nc.gridlon_221
+        dx , dy = mcalc.lat_lon_grid_deltas(lons, lats)
+        if field.startswith("div"):
+            data = mcalc.divergence(u,v,dx=dx,dy=dy) * 1e5
+            data.attrs['long_name'] = "divergence * 1e5"
+        if field.startswith("vort"):
+            data = mcalc.vorticity(u,v,dx=dx,dy=dy) * 1e5
+            data.attrs['long_name'] = "vorticity * 1e5"
     elif field.startswith('shr') and '_' in field:
         du, dv = shear(field, valid_time=valid_time, targetdir=targetdir)
         data = mcalc.wind_speed(du, dv)
@@ -628,6 +632,50 @@ def vectordata(field, valid_time, targetdir=targetdir):
     uv.attrs["long_name"] = uv.attrs["long_name"].replace("u-component of ","").replace("zonal ","")
     uv.attrs['field'] = field # 'field' attribute should have been added to u and v separately in scalardata().
     return uv
+
+def cartplot(args, lon, lat, dist_from_center, bearing, data, storm, storm_reports, barbkwdict, 
+        linecontourdata=None, barbdata=None):
+    stormname, valid_time = storm.split()
+    logging.info("cartopy view for debugging...")
+    fig = plt.figure(num=2, clear=True, figsize=(12,10))
+    logging.debug(f"fignums={plt.get_fignums()}")
+    axc = plt.axes(projection=cartopy.crs.LambertConformal(central_latitude=1, central_longitude=-107, standard_parallels=[50., 50.]))
+    axc.set_extent(args.extent, crs=cartopy.crs.PlateCarree())
+
+    levels = data.attrs['levels']
+    cmap = data.attrs['cmap']
+    cfill = axc.pcolormesh(lon, lat, data, cmap=cmap, norm=colors.BoundaryNorm(levels,cmap.N), transform=cartopy.crs.PlateCarree())
+    if linecontourdata is not None:
+        line_contour = axc.contour(lon,lat,linecontourdata,levels=args.clevels,transform=cartopy.crs.PlateCarree())
+        line_contour_labels = axc.clabel(line_contour, fontsize=5, fmt='%.0f')
+    if barbdata is not None:
+        axc.barbs(lon.data.flatten(), lat.data.flatten(), barbdata.isel(uv=0).data.flatten(), barbdata.isel(uv=1).data.flatten(), 
+                transform=cartopy.crs.PlateCarree(), **barbkwdict)
+    axc.set_title(storm)
+
+    # Color bar
+    cb = plt.colorbar(cfill, ax=axc, orientation='horizontal', shrink=0.55)
+    cbar_title = f'{data.attrs["timetitle"]} {data.attrs["verttitle"]} {data.long_name} {data.metpy.units:~}'
+    cb.ax.set_title(cbar_title)
+
+    c = axc.contour(lon, lat, dist_from_center, levels=np.arange(0,args.max_range+200,200), colors='black', alpha=0.8, transform=cartopy.crs.PlateCarree())
+    axc.clabel(c, fontsize='xx-small', fmt='%ikm')
+    c = axc.contour(lon, lat, bearing, levels=range(0,360,45), colors='black', alpha=0.8, transform=cartopy.crs.PlateCarree())
+    axc.clabel(c, fontsize='xx-small', fmt='%i')
+
+    if not storm_reports.empty:
+        legend_items = spc.plot(storm_reports, axc, scale=2)
+        axc.legend(handles=legend_items.values()).set_title(f"storm rpts")
+
+    # *must* call draw in order to get the axis boundary used to add ticks:
+    fig.canvas.draw()
+
+    axc.add_feature(cartopy.feature.STATES.with_scale('50m'), linewidth=0.3, alpha=0.8)
+    axc.add_feature(cartopy.feature.COASTLINE.with_scale('50m'), linewidth=0.4, alpha=0.8)
+    ocart = f"cart.{valid_time}.png"
+    plt.savefig(ocart)
+    logging.info(f'created {os.path.realpath(ocart)}')
+    plt.figure(1) # switch back to polar plots figure
 
 
 

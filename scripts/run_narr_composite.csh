@@ -46,13 +46,15 @@ foreach filllinebarb (`cat $repo/scripts/filllinebarb.txt` `cat $CM1`)
     set line=$split[2]
     set barb=$split[3]
 
+    #if ($fill !~ div* & $fill !~ vort*) continue
+
     if ($line == _) then
         set line=""
         set lineargs=""
     else
         # line contour argumements, and add line to output file name
         if ($line == sbcape) set lineargs="--line $line --clev 500 1000 2000" 
-        if ($line =~ shr10m_*) set lineargs="--line $line --clev 6 12 18 24" 
+        if ($line =~ shr10m_*) set lineargs="--line $line --clev 4 8 12 16" 
         if ($line == srh) set lineargs="--line $line --clev 150 200 300" 
         set line="$line."
     endif

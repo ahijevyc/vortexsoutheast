@@ -4,13 +4,12 @@ import os
 import spc
 import sys
 
-workdir = "/glade/scratch/ahijevyc/vortexsoutheast/stormtimelist"
 
 def composites():
-    # get all files ending with .00z.txt
-    ff = glob.glob(os.path.join(workdir,"*z.txt"))
+    # get all files ending with .txt
+    c = glob.glob(os.path.join("/glade/scratch/ahijevyc/vortexsoutheast/categories", "*.txt"))
     # split filename by periods and get first part
-    cl = [os.path.basename(f).split('.')[0] for f in ff]
+    cl = [os.path.splitext(os.path.basename(f))[0] for f in c]
     return set(cl)
 
 def str3(label,az,r):

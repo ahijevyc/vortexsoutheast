@@ -9,21 +9,20 @@ import numpy as np
 import os
 import pdb
 import seaborn as sns
-import sys
 import VSE
 import xarray
 
 parser = argparse.ArgumentParser(description='line plot of output from NARR_composite.py', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('-d','--debug', action="store_true", help='print debug messages')
-parser.add_argument('--desc', type=str, default="tornadoes_near_coast", choices=VSE.composites(), help='description of composite category')
-parser.add_argument('field', type=str, default="mlcape", help='NARR field')
+parser.add_argument('--desc', default="tornadoes_near_coast", choices=VSE.composites(), help='description of composite category')
+parser.add_argument('field', default="mlcape", help='NARR field')
 parser.add_argument('--clobber', action="store_true", help='overwrite old file')
-parser.add_argument('--coord', type=str, choices=["north", "storm motion", "wind shear"], default = "north", help='coordinate system. fields rotated so that this vector points up')
-parser.add_argument('--dpi', type=int, default = 120, help='output resolution in dots per inch')
-parser.add_argument('--idir', type=str, default = "/glade/scratch/ahijevyc/trier/VSE/nc", help='input directory')
+parser.add_argument('--coord', choices=["north", "storm motion", "wind shear"], default = "north", help='coordinate system. fields rotated so that this vector points up')
+parser.add_argument('--dpi', type=int, default = 150, help='output resolution in dots per inch')
+parser.add_argument('--idir', default = "/glade/scratch/ahijevyc/vortexsoutheast/output/composites/nc", help='input directory')
 parser.add_argument('--no-fineprint', action="store_true", help="Don't write additional information at bottom of figure")
 locations = parser.add_mutually_exclusive_group(required=False)
-locations.add_argument('--centroid', type=str, default = "shr10_700 max", choices=VSE.centroids(), help='use predetermined list of locations defined by coord and centroid')
+locations.add_argument('--centroid', default = "shr10_700 max", choices=VSE.centroids(), help='use predetermined list of locations defined by coord and centroid')
 locations.add_argument('--location', nargs='+', type=str, default=None, help='label/azimuth/range. azimuth in deg, starting at north and increasing cw. range in km')
 parser.add_argument('--simplegend', action="store_true", help='no azimuth and range in legend location labels')
 parser.add_argument('--twin', type=int, default=3, help='time window in hours')
@@ -42,7 +41,7 @@ simplegend   = args.simplegend
 twin         = args.twin
 
 level = logging.DEBUG if args.debug else logging.INFO
-logging.basicConfig(format='%(asctime)s - %(message)s', level=level)
+logging.basicConfig(format='%(asctime)s - %(message)s', level=level, force=True)
 logging.debug(args)
 
 if centroid:
@@ -99,7 +98,8 @@ plt.subplots_adjust(bottom=0.18)
 # 95% CIs change due to bootstrapping. (unless seed is set)
 ci, n_boot = 95, 10000
 # tried data=narrds, but ValueError: arrays must all be same length
-ax = sns.lineplot(data=narrds.to_dataframe(), x="hour", y=field, hue="location", errorbar=('ci',ci), n_boot=n_boot, seed=14, ax=ax)
+ax = sns.lineplot(data=narrds.to_dataframe(), x="hour", y=field, hue="location", errorbar=('ci',ci), n_boot=n_boot, 
+        style="location", dashes=False, markers=["+","+"], seed=14, ax=ax)
 ax.set(xlim=(0.5,hour.size-1.5))
 ax.set(ylabel=f"{field} [{narrds[field].units}]")
 fontsize = "small" if simplegend else "x-small"
@@ -115,7 +115,7 @@ fineprint = plt.annotate(text=fineprint_text, xy=(4,1), xycoords=('figure pixels
 if no_fineprint:
     fineprint.set_visible(False)
 
-ofile = f"{idir}/{desc}.{coord.replace(' ','_')}.{field}.png"
+ofile = f"{idir}/{desc}.{coord.replace(' ','_')}.{field}.pdf"
 plt.savefig(ofile, dpi=dpi)
 logging.info(f"made {os.path.realpath(ofile)}")
 
