@@ -13,4 +13,5 @@ dependencies:
   - pyarrow
   - matplotlib
   - seaborn
+  - siphon
 prefix: /glade/u/home/ahijevyc/miniconda3

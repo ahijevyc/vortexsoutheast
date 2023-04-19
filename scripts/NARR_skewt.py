@@ -1,13 +1,17 @@
 from atcf import dist_bearing
 import argparse
+import cartopy
 import datetime
 import ibtracs
 import logging
-logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
+import matplotlib
+matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import matplotlib.transforms as transforms
 from metpy.interpolate import interpolate_1d
-from metpy.plots import Hodograph, SkewT # SkewT segfaults when outside of base conda env on casper
+# SkewT segfaults when outside of base conda env on casper
+# errors with different units registries if you use base conda env. use `vortexsoutheast` conda env
+from metpy.plots import Hodograph, SkewT
 from metpy.units import units, pandas_dataframe_to_unit_arrays
 import metpy.calc as mpcalc
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
@@ -20,6 +24,8 @@ from siphon.simplewebservice.wyoming import WyomingUpperAir
 import sys
 import xarray
 
+
+logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO, force=True)
 
 def getparser():
     parser = argparse.ArgumentParser(description='skew t of output from NARR', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -53,13 +59,20 @@ def main():
     fig = plt.figure(figsize=(8,8))
 
     ibtracs_df, ibtracs_file = ibtracs.get_df(basin="NA")
+    # filter out "duplicate" 50 and 64-kt lines or it will break ibtracs.getExt()
+    ibtracs_df = ibtracs_df[ibtracs_df.rad == 34]
+
     for index, row in df.iterrows():
         storm = row.storm
         year = row.itime.year
         trackdf = ibtracs.this_storm(ibtracs_df, storm, year)
-        logging.debug("got trackdf")
+        logging.debug(f"got {storm} {year} ({len(trackdf)} lines) from {ibtracs_df}")
         itime = row.itime
-        TC = trackdf.set_index("valid_time")[["lon","lat"]].drop_duplicates()
+        if itime > trackdf.valid_time.max():
+            logging.warning(f"requested time {itime} is after {storm} {year} ends")
+            trackdf = ibtracs.getExt(storm, year, trackdf, [itime])
+        
+        TC = trackdf.set_index("valid_time")[["lon","lat"]]
         TC = TC.resample('H').interpolate(method="linear").loc[itime]
         station = row.station
         cache = f"/glade/scratch/ahijevyc/wyocache/{itime.strftime('%Y%m%dT%H%M')}{station}.csv"
@@ -91,7 +104,6 @@ def main():
                 u = obs["u_wind"].to(plot_barbs_units)
                 v = obs["v_wind"].to(plot_barbs_units)
                 od["psfc"] = p.max()
-                od["lcl_pressure"], _ = mpcalc.lcl(p[0], T[0], Td[0])
                 od["pwat"] = mpcalc.precipitable_water(p,Td)
                 # Get rh and rh at 0degC level.
                 relative_humidity = mpcalc.relative_humidity_from_dewpoint(T,Td).to("percent")
@@ -106,18 +118,25 @@ def main():
             else:
                 logging.debug(f"open {itime} NARR")
                 ds = xarray.open_dataset(narr.get(itime))
-                dims_dict=dict(
-                        gridx_221="x",
-                        gridy_221="y"
-                        )
-                ds = ds.rename_dims(dims_dict=dims_dict)
-                
+                ds = ds.rename_dims(dims_dict=narr.dims_dict)
+                ds = ds.metpy.assign_crs(narr.data_crs.to_cf()) 
+                ds = ds.metpy.assign_y_x(tolerance=2*units.m)
+
                 logging.debug("reverse pressure dimension")
                 ds = ds.reindex(lv_ISBL0=ds.lv_ISBL0[::-1]) # 1000 to 100mb
                 logging.debug("find closest gridpoint to station")
 
-                imin = ((ds.gridlon_221-slon.m)**2 + (ds.gridlat_221-slat.m)**2).argmin(dim=["x","y"])
+                # transform slat/slon to x/y with cartopy
+                x, y = narr.data_crs.transform_point(slon.m, slat.m, src_crs=cartopy.crs.PlateCarree())
+
+                imin = ((ds.x-x)**2 + (ds.y-y)**2).argmin(dim=["x","y"])
                 prof = ds.isel(imin)
+                nearest = dict(x=x,y=y, method="nearest", tolerance=17000*units.m)
+                if not prof.equals(ds.metpy.sel(**nearest)):
+                    logging.warning(f"sel method pulled different profile than imin")
+                    pdb.set_trace()
+
+
                 lon = prof.gridlon_221.metpy.quantify().data
                 lat = prof.gridlat_221.metpy.quantify().data
                 p = prof.lv_ISBL0
@@ -138,14 +157,16 @@ def main():
                     od[f"{sigp:.0f} temp"] = T0.data
                     od[f"{sigp:.0f} thetae"] = mpcalc.equivalent_potential_temperature(sigp, T0, Td0).data.to("degC")
                 logging.debug("NARR sbcape")
-                od["narr sbcape"]    = narr.scalardata('sbcape', itime).isel(imin).data
-                od["narr sbcinh"]    = narr.scalardata('sbcinh', itime).isel(imin).data
-                od["narr mlcape"]    = narr.scalardata('mlcape', itime).isel(imin).data
-                od["narr mlcinh"]    = narr.scalardata('mlcinh', itime).isel(imin).data
-                od["narr 0degC rh"]  = narr.scalardata('rh_0deg', itime).isel(imin).data
-                od["lcl_pressure"]   = narr.scalardata('lcl', itime).isel(imin).data
-                od["psfc"]           = narr.scalardata('psfc', itime).isel(imin).data
-                od["pwat"]           = narr.scalardata('pwat', itime).isel(imin).data * units.m**3 / (1000*units.kg)
+                od["narr sbcape"]    = narr.scalardata('sbcape', itime).isel(imin).data.compute()
+                od["narr sbcinh"]    = narr.scalardata('sbcinh', itime).isel(imin).data.compute()
+                od["narr mlcape"]    = narr.scalardata('mlcape', itime).isel(imin).data.compute()
+                od["narr mlcinh"]    = narr.scalardata('mlcinh', itime).isel(imin).data.compute()
+                od["narr 0degC rh"]  = narr.scalardata('rh_0deg', itime).isel(imin).data.compute()
+                # compute() to avoid TypeError: len() of unsized object when printing LCL text
+                # seems to be too high up in NARR. derive it from 1000 hPa parcel instead
+                #od["narr lcl_pressure"]   = narr.scalardata('lcl', itime).isel(imin).data.compute()
+                od["psfc"]           = narr.scalardata('psfc', itime).isel(imin).data.compute()
+                od["pwat"]           = narr.scalardata('pwat', itime).isel(imin).data.compute() * units.m**3 / (1000*units.kg)
                 od["pwat"]           = od["pwat"].to("mm")
                 logging.debug("NARR shears")
                 od["narr shr10m_900hPa"] = narr.scalardata('shr10m_900hPa', itime).isel(imin).data.compute()
@@ -185,6 +206,7 @@ def main():
             parcel_level = 0 if stype == "obs" else 0
             mixing_ratio_parcel = mpcalc.mixing_ratio_from_relative_humidity(p[parcel_level], T[parcel_level], relative_humidity[parcel_level])
             prof_mixing_ratio = mpcalc.mixing_ratio_from_relative_humidity(p, profT, 1) # saturated mixing ratio
+            od["lcl_pressure"], _ = mpcalc.lcl(p[parcel_level], T[parcel_level], Td[parcel_level])
             prof_mixing_ratio[p >= od["lcl_pressure"]] = mixing_ratio_parcel # unsaturated mixing ratio (constant up to LCL)
             profTv = mpcalc.virtual_temperature(profT, prof_mixing_ratio)
 
@@ -196,8 +218,8 @@ def main():
                 mixing_ratio[cold_and_probably_dry] = 0
             Tv = mpcalc.virtual_temperature(T, mixing_ratio)
             skew.plot(p, Tv, 'r', linewidth=0.5, linestyle="dashed")
-            skew.ax.plot([0.86,0.88], 2*[od["lcl_pressure"].m], transform=trans)
-            skew.ax.text(0.885,od["lcl_pressure"],"sfc LCL", transform=trans, ha="left", va="center")
+            skew.ax.plot([0.83,0.85], 2*[od["lcl_pressure"].m], transform=trans)
+            skew.ax.text(0.855,od["lcl_pressure"],f'sfc LCL ({od["lcl_pressure"]:~.0f})', transform=trans, ha="left", va="center", fontsize='x-small')
 
             sfcape, sfcin = mpcalc.cape_cin(p,Tv,Td,profTv)
             storm_u = 0. * units.m / units.s

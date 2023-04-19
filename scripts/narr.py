@@ -29,6 +29,11 @@ narr3D  = ('3D', '3D')
 narrFixed  = "/glade/scratch/"+os.getenv("USER")+"/NARR/rr-fixed.grb.nc"
 targetdir = os.path.join("/glade/scratch",os.getenv("USER"),"NARR")
 
+re=6371200
+# spherical globe 
+data_crs = cartopy.crs.LambertConformal(central_latitude=1, central_longitude=-107, standard_parallels=[50., 50.], 
+        globe=cartopy.crs.Globe(semimajor_axis=re, semiminor_axis=re))
+
 # Modify fieldinfo dictionary for NARR.
 # fieldinfo keys are "human-readable" string nicknames like "u700" and "speed10m".
 # Their values are also dictionaries with information about how to find the data, read the data, extract vertical level(s), and plot the data. 
@@ -54,7 +59,7 @@ for lev in levs:
         if ws == 'vort':
             fieldinfo[f]['levels'] = np.arange(-4,40,4) 
         if ws == 'div':
-            fieldinfo[f]['levels'] = np.arange(-27,33,6) 
+            fieldinfo[f]['levels'] = np.arange(-18,22,4) 
             fieldinfo[f]['cmap'] = readNCLcm('BlueWhiteOrangeRed')
         if lev.units == units.hPa:
             fieldinfo[f]['fname'] = ['U_GRD_221_ISBL', 'V_GRD_221_ISBL'] # changed to get vector data
@@ -492,7 +497,9 @@ def scalardata(field: str, valid_time: datetime.datetime, targetdir: str = targe
     ifiles = [get(valid_time, targetdir=targetdir, narrtype=narrtype) for narrtype in [narrSfc, narrFlx, narrPBL, narr3D]]
 
     logging.debug(f"about to open {ifiles}")
-    nc = xarray.open_mfdataset(ifiles).metpy.parse_cf()
+    # Would like to use parse_cf() but file is not CF compliant
+    # not sure if this helps anything. x and y still are not projection coordinates; they are index values.
+    nc = xarray.open_mfdataset(ifiles).metpy.assign_crs(data_crs.to_cf())
 
     # Avoid UserWarning: Horizontal dimension numbers not found.
     logging.debug(f"rename {dims_dict}")
@@ -509,11 +516,13 @@ def scalardata(field: str, valid_time: datetime.datetime, targetdir: str = targe
         data.attrs['long_name'] = "wind speed"
     elif field.startswith("div") or field.startswith("vort"):
         # TODO: why don't mcalc.div and vort work with vertical dimension? Have to sel a single level before calling them.
-        u = data[info["fname"][0]].sel(lv_ISBL0=info["vertical"])
-        v = data[info["fname"][1]].sel(lv_ISBL0=info["vertical"])
+        u = data[info["fname"][0]]
+        v = data[info["fname"][1]]
         lats = nc.gridlat_221
         lons = nc.gridlon_221
         dx , dy = mcalc.lat_lon_grid_deltas(lons, lats)
+        dx = dx[np.newaxis,:] # allow for vertical dimension
+        dy = dy[np.newaxis,:] # avoid IndexError: too many indices for array: array is 2-dimensional, but 3 were indexed
         if field.startswith("div"):
             data = mcalc.divergence(u,v,dx=dx,dy=dy) * 1e5
             data.attrs['long_name'] = "divergence * 1e5"
@@ -582,13 +591,13 @@ def scalardata(field: str, valid_time: datetime.datetime, targetdir: str = targe
                 attrs = {'long_name': 'TC tornado parameter Eastin et al. 2014'}
             data = xarray.DataArray(data=tctp, attrs=attrs)
     elif field=='lcl':
-        data.attrs["long_name"] = f"pressure of lifted condensation level from surface parcel" # zlcl long_name based on this
+        data.attrs["long_name"] = f"adiabatic lifting condensation level pressure" # zlcl long_name based on this
     elif field=='zlcl':
         LCL_pressure = scalardata('lcl', valid_time, targetdir=targetdir)
         hgt3D = data["HGT_221_ISBL"] 
         data = pressure_to_height(LCL_pressure, hgt3D)
         data = data - surface_height
-        data.attrs['long_name']=LCL_pressure.attrs["long_name"].replace("pressure of", "height AGL of")
+        data.attrs['long_name']=LCL_pressure.attrs["long_name"].replace("pressure", "height AGL")
     else:
         if 'sel' in info and info["sel"] is not None: # this is a component of a vector
             attrs = data[info["sel"]].attrs # remember attributes of sel component before .to_array removes them
@@ -639,7 +648,7 @@ def cartplot(args, lon, lat, dist_from_center, bearing, data, storm, storm_repor
     logging.info("cartopy view for debugging...")
     fig = plt.figure(num=2, clear=True, figsize=(12,10))
     logging.debug(f"fignums={plt.get_fignums()}")
-    axc = plt.axes(projection=cartopy.crs.LambertConformal(central_latitude=1, central_longitude=-107, standard_parallels=[50., 50.]))
+    axc = plt.axes(projection=data_crs)
     axc.set_extent(args.extent, crs=cartopy.crs.PlateCarree())
 
     levels = data.attrs['levels']
@@ -742,10 +751,3 @@ def fromskewtds(nc, field):
         data = nc[fvar]
 
     return data
-
-crs = dict(
-    grid_mapping_name='lambert_conformal_conic',
-    latitude_of_projection_origin=1.000,
-    longitude_of_central_meridian=214.500,
-    standard_parallel=50.000,
-)
