@@ -1,1 +1,1 @@
-../../webplot/fieldinfo.py
+../../MPASplot/fieldinfo.py

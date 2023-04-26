@@ -7,6 +7,7 @@ from metpy.calc import wind_speed
 import narr
 import numpy as np
 import os
+from pathlib import Path
 import pdb
 import seaborn as sns
 import VSE
@@ -19,7 +20,7 @@ parser.add_argument('field', default="mlcape", help='NARR field')
 parser.add_argument('--clobber', action="store_true", help='overwrite old file')
 parser.add_argument('--coord', choices=["north", "storm motion", "wind shear"], default = "north", help='coordinate system. fields rotated so that this vector points up')
 parser.add_argument('--dpi', type=int, default = 150, help='output resolution in dots per inch')
-parser.add_argument('--idir', default = "/glade/scratch/ahijevyc/vortexsoutheast/output/composites/nc", help='input directory')
+parser.add_argument('--idir', default = Path(__file__).parent.parent.absolute() / "output/composites/nc", help='input directory')
 parser.add_argument('--no-fineprint', action="store_true", help="Don't write additional information at bottom of figure")
 locations = parser.add_mutually_exclusive_group(required=False)
 locations.add_argument('--centroid', default = "shr10_700 max", choices=VSE.centroids(), help='use predetermined list of locations defined by coord and centroid')
