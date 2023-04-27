@@ -1,16 +1,16 @@
-Katrina05; upshr SHV(32.46, -93.78) 8/30/00z, dnshr FFC(33.36, -84.56) 8/30/00z
-Ivan04; upshr JAN(32.31, -90.08) 9/16/18z, dnshr FFC(33.36, -84.56) 9/16/12z
-Rita05; upshr FWD(32.83, -97.30) 9/25/00z, dnshr JAN(32.31, -90.08) 9/25/00z
-Florence18; upshr FFC(33.46, -84.56) 9/17/00z, dnshr GSO(36.08, -79.95) 9/17/00z
-Irma17; upshr BMX(33.16, -86.76) 9/11/12z, dnshr JAX(30.50, -81.70) 9/11/00z
-Jeanne04; upshr BMX(33.16, -86.76) 9/28/00z, dnshr MHX(34.78, -76.88) 9/28/00z
-Gustav08; upshr CRP(27.76, -97.50) 9/2/00z, dnshr JAN(32.31, -90.08) 9/2/00z
-Ike08; upshr FWD(32.83, -97.30) 9/14/00z, dnshr LZK(34.83, -92.27) 9/14/00z
-Frances04; upshr JAN(32.31, -90.08) 9/8/00z, dnshr GSO(36.08, -79.95) 9/8/00z
-Opal95; dnshr TLH(30.45, -84.30) 10/4/18z
-Georges98; upshr LCH(30.11, -93.21) 9/29/00z, dnshr TLH(30.45, -84.30) 9/29/00z 
-Harvey17; upshr BRO(25.91, -97.41) 8/26/18z, dnshr LCH(30.11, -93.21) 8/26/18z
-Michael18; upshr LIX(30.34, -89.83) 10/11/00z, dnshr JAX(30.50, -81.70) 10/11/00z
-Laura20; upshr FWD(32.83, -97.30) 8/28/00z, dnshr JAN(32.31, -90.08) 8/27/18z
-Sally20; upshr FFC(33.36, -84.56) 9/18/00z, dnshr CHS(32.90, -80.03) 9/17/12z
-Ida21; upshr SHV(32.46, -93.78) 9/1/00z, dnshr FFC(33.36, -84.56) 9/1/00z 
+Katrina05; upshr SHV 8/30/00z, dnshr FFC 8/30/00z
+Ivan04; upshr JAN 9/16/18z, dnshr FFC 9/16/12z
+Rita05; upshr FWD 9/25/00z, dnshr JAN 9/25/00z
+Florence18; upshr FFC 9/17/00z, dnshr GSO 9/17/00z
+Irma17; upshr BMX 9/11/12z, dnshr JAX 9/11/00z
+Jeanne04; upshr BMX 9/28/00z, dnshr MHX 9/28/00z
+Gustav08; upshr CRP 9/2/00z, dnshr JAN 9/2/00z
+Ike08; upshr FWD 9/14/00z, dnshr LZK 9/14/00z
+Frances04; upshr JAN 9/8/00z, dnshr GSO 9/8/00z
+Opal95; dnshr TLH 10/4/18z
+Georges98; upshr LCH 9/29/00z, dnshr TLH 9/29/00z 
+Harvey17; upshr BRO 8/26/18z, dnshr LCH 8/26/18z
+Michael18; upshr LIX 10/11/00z, dnshr JAX 10/11/00z
+Laura20; upshr FWD 8/28/00z, dnshr JAN 8/27/18z
+Sally20; upshr FFC 9/18/00z, dnshr CHS 9/17/12z
+Ida21; upshr SHV 9/1/00z, dnshr FFC 9/1/00z 

@@ -34,6 +34,7 @@ Frances98; uphsr BRO(25.91, -97.41) 9/12/00z, dnshr LCH(30.11, -93.21) 9/12/00z
 Helene00; upshr JAN(32.31, -90.08) 9/22/12z, dnshr CHS(32.90, -80.03) 9/23/00z
 Allison01; upshr GSO(36.08, -79.95) 6/13/00z, dnshr CHS(32.90, -80.03) 6/13/00z
 Fay02; upshr BRO(25.91, -97.41) 9/7/06z, dnshr LCH(30.11, -93.21) 9/7/12z
+Hermine10; upshr AMA(35.23, -101.70) 9/9/00z, dnshr FWD(32.83, -97.83) 9/9/00z
 Bill15; upshr ILX(40.15, -89.33) 6/20/00z, dnshr BNA(36.25, -86.57) 6/20/00z
 Cindy17; upshr ILX(40.15, -89.33) 6/23/12z, dnshr BNA(36.25, -86.57) 6/24/00z
 Nate17; upshr BNA(36.25, -86.57), dnshr GSO(36.08, -79.95) 10/9/00z
@@ -43,7 +44,6 @@ Elsa21; upshr FFC(33.36, -84.56) 7/8/00z, dnshr CHS(32.90, -80.03) 7/8/00z
 Fred21; upshr BNA(36.25, -86.57) 8/18/00z, dnshr CHS(32.90, -80.03) 8/18/00z
 
 Note: Debby12 is now deleted from the Weak LTCs, many TCTs category.
-
 Weak LTCs, few or no tornadoes:
 
 Dennis99; upshr GSO(36.08,-79.50) 9/5/00z, dnshr WAL(37.93, -75.48) 9/5/00z
