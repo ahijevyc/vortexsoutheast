@@ -1,0 +1,121 @@
+Strong LTCs, many tornadoes:
+
+Katrina05; upshr SHV 8/30/00z, dnshr FFC 8/30/00z
+Ivan04; upshr JAN 9/16/18z, dnshr FFC 9/16/12z
+Rita05; upshr FWD 9/25/00z, dnshr JAN 9/25/00z
+Florence18; upshr FFC 9/17/00z, dnshr GSO 9/17/00z
+Irma17; upshr BMX 9/11/12z, dnshr JAX 9/11/00z
+Jeanne04; upshr BMX 9/28/00z, dnshr MHX 9/28/00z
+Gustav08; upshr CRP 9/2/00z, dnshr JAN 9/2/00z
+Ike08; upshr FWD 9/14/00z, dnshr LZK 9/14/00z
+Frances04; upshr JAN 9/8/00z, dnshr GSO 9/8/00z
+Opal95; dnshr TLH 10/4/18z
+Georges98; upshr LCH 9/29/00z, dnshr TLH 9/29/00z 
+Harvey17; upshr BRO 8/26/18z, dnshr LCH 8/26/18z
+Michael18; upshr LIX 10/11/00z, dnshr JAX 10/11/00z
+Laura20; upshr FWD 8/28/00z, dnshr JAN 8/27/18z
+Sally20; upshr FFC 9/18/00z, dnshr CHS 9/17/12z
+Ida21; upshr SHV 9/1/00z, dnshr FFC 9/1/00z 
+
+Weak LTCs, many tornadoes:
+
+Lili02; dnshr JAN 10/3/18z
+Gaston04; upshr GSO 8/31/00z, dnshr WAL 8/30/12z
+Alberto06; upshr BMX 6/14/00z, dnshr CHS 6/14/00z
+Lee11; upshr LCH 9/5/00z, dnshr BMX 9/5/00z
+Hermine16; upshr JAN 9/2/00z, dnshr 9/2/00z
+Gabrielle01; upshr TLH 9/14/18z, dnshr XMR 9/14/18z
+Cindy05; upshr JAN 7/7/00z
+Bill03; upshr LZK 7/2/00z, dnshr FFC 7/2/00z
+Erin95; upshr MFL 8/2/12z, dnshr TLH 8/3/00z
+Danny97; upshr RNK 7/24/00z, dnshr CHS 7/24/00z
+Earl98; upshr BMX 9/3/00z, dnshr JAX 9/3/12z
+Frances98; uphsr BRO 9/12/00z, dnshr LCH 9/12/00z
+Helene00; upshr JAN 9/22/12z, dnshr CHS 9/23/00z
+Allison01; upshr GSO 6/13/00z, dnshr CHS 6/13/00z
+Fay02; upshr BRO 9/7/06z, dnshr LCH 9/7/12z
+Hermine10; upshr AMA 9/9/00z, dnshr FWD 9/9/00z
+Bill15; upshr ILX 6/20/00z, dnshr BNA 6/20/00z
+Cindy17; upshr ILX 6/23/12z, dnshr BNA 6/24/00z
+Nate17; upshr BNA 10/9/00z, dnshr GSO 10/9/00z
+Isaias20; upshr GSO 8/4/00z, dnshr MHX 8/4/00z
+Delta20; upshr LZK 10/10/12z, dnshr BMX 10/10/12z
+Elsa21; upshr FFC 7/8/00z, dnshr CHS 7/8/00z
+Fred21; upshr BNA 8/18/00z, dnshr CHS 8/18/00z
+
+Note: Debby12 is now deleted from the Weak LTCs, many TCTs category.
+Weak LTCs, few or no tornadoes:
+
+Dennis99; upshr GSO 9/5/00z, dnshr WAL 9/5/00z
+Hanna02; upshr LCH 9/14/12z, dnshr BMX 9/14/12z
+Claudette03; upshr DRT 7/15/18z, dnshr CRP 7/16/00z
+Isabel03; upshr CHS 9/19/00z, dnshr WAL 9/19/00z
+Grace03; upshr CRP 9/1/00z, dnshr LCH 9/1/00z
+Arlene05; upshr LCH 6/12/00z, dnshr FFC 6/12/00z
+Humberto07; upshr FWD 9/14/12z, dnshr LIX 9/14/00z
+Edouard08; upshr CRP 8/5/12z, dnshr LCH 8/6/00z
+Jerry95; upshr TBW 8/8/12z, dnshr JAX 8/8/12z
+Fran96; upshr CHS 9/6/00z, dnshr WAL 9/6/12z
+Charley98; upshr BRO 8/22/12z, dnshr LCH 8/22/12z
+Edouard02; upshr TBW 9/5/12z, dnshr JAX 9/5/12z
+Matthew04; upshr LCH 9/1/00z, dnshr LIX 9/1/00z
+Dennis05; upshr JAN 7/11/00z, dnshr FFC 7/11/00z
+Tammy05; upshr TLH 10/6/12z, dnshr CHS 10/6/00z
+Sandy12; upshr IAD 10/3/00z, dnshr OKX 10/3/00z
+Ana15; upshr CHS 5/11/00z, dnshr MHX 5/10/12z
+Barry19; upshr CRP 7/14/00z, dnshr LIX 7/14/00z
+Zeta20; upshr LCH 10/29/00z, dnshr TLH 10/29/00z
+Bertha02; upshr LCH 8/6/00z, dnshr JAN 8/5/18z
+Bertha20; dnshr MHX 5/28/00z
+
+Note: Gordon18 has been moved from the “Weak LTCs, few TCTs” category to the “Some TCTs” category.
+
+Some TCTs:
+
+Allison95; upshr FFC 6/6/00z, dnshr JAX 6/5/12z
+Dean95; upshr CRP 7/31/00z, dnshr LCH 7/31/00z
+Bret99: upshr BRO 8/22/18z, dnshr CRP 8/23/00z
+Barry01; upshr JAN 8/6/18z, dnshr BMX 8/7/00z
+Ernesto06; upshr GSO 9/1/12z, dnshr MHX 9/1/06z
+Erin07; upshr AMA 8/19/00z, dnshr OUN 8/19/00z
+Dolly08; dnshr CRP 7/24/00z
+Beryl12; upshr TLH 5/29/12z, dnshr JAX 5/29/00z
+Alberto18; upshr ILX 5/31/00z, dnshr ILN 5/31/00z
+Gordon18; upshr LZK 9/6/00z, dnshr BMX 9/6/00z
+Nestor19; upshr BMX 10/20/00z, dnshr JAX 10/20/00z
+Hanna20; upshr BRO 7/25/18z, dnshr CRP 7/26/00z
+Claudette21; upshr JAN 6/20/00z, dnshr TLH 6/19/12z 
+
+
+
+
+WMO numbers
+
+SHV = 72248 (Shreveport, LA)
+FFC = 72215 (Peachtree City, GA)
+JAN = 72235 (Jackson, MS)
+FWD = 72249 (Dallas-Ft. Worth, TX)
+GSO = 72317 (Greensboro, NC)
+JAX = 72206 (Jacksonville, FL)
+BMX = 72230 (Birmingham, AL)
+MHX = 72305 (Newport, NC)
+CRP = 72251 (Corpus Christi, TX)
+LZK = 72340 (Little Rock, AR)
+WAL = 72402 (Wallops Island, VA)
+CHS = 72208 (Charleston, SC)
+LCH = 72240 (Lake Charles, LA)
+LIX = 72233 (Slidell, LA)
+TLH = 72214 (Tallahassee, FL)
+XMR = 74794 (Cape Kennedy, FL)
+DRT = 72261 (Del Rio, TX)
+BRO = 72250 (Brownsville, TX)
+MFL = 72202 (Miami, FL)
+RNK = 72318 (Blacksburg, VA)
+ILX = 74560 (Lincoln, IL)
+ILN = 72426 (Wilmington, OH)
+BNA = 72327 (Nashville, TN)
+TBW = 72210 (Tampa, FL)
+IAD = 72403 (Sterling, VA)
+OKX = 72501 (Upton, NY)
+AMA = 72363 (Amarillo, TX)
+OUN = 72357 (Norman, OK)
