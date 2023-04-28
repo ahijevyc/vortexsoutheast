@@ -51,7 +51,7 @@ def main():
     logging.debug(args)
 
     df = pd.read_csv(ifile, names=["storm","itime","place","station"], parse_dates=["itime"])
-    assert set(df["place"].unique()) == set(["upshr","dnshr"]), "expected 2 places: upshr and dnshr"
+    assert df["place"].isin(["upshr","dnshr"]).all(), "expected place to be upshr or dnshr"
     df["itime"] = pd.to_datetime(df["itime"], utc=True)
 
     odf = pd.DataFrame()
@@ -73,6 +73,9 @@ def main():
             trackdf = ibtracs.getExt(storm, year, trackdf, [itime])
         
         TC = trackdf.set_index("valid_time")[["lon","lat"]]
+        if itime not in TC.index:
+            logging.error(f"{itime} not in TC {TC}")
+            pdb.set_trace()
         TC = TC.resample('H').interpolate(method="linear").loc[itime]
         station = row.station
         cache = f"/glade/scratch/ahijevyc/wyocache/{itime.strftime('%Y%m%dT%H%M')}{station}.csv"

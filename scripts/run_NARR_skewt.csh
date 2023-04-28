@@ -1,6 +1,12 @@
 #!/bin/csh
-python NARR_skewt.py ../closest_observed_soundings/coastal.torn.csv
-python NARR_skewt.py ../closest_observed_soundings/inland.torn.csv
-python NARR_skewt.py ../closest_observed_soundings/strongLTC.manytorn.csv
-python NARR_skewt.py ../closest_observed_soundings/weakLTC.fewornotorn.csv
-python NARR_skewt.py ../closest_observed_soundings/weakLTC.manytorn.csv
+
+foreach f (\
+    ../closest_observed_soundings/sometorn.txt \
+    ../closest_observed_soundings/strongLTC.manytorn.txt\
+    ../closest_observed_soundings/weakLTC.fewornotorn.txt\
+    ../closest_observed_soundings/weakLTC.manytorn.txt\
+    )
+    set csv=../output/`basename $f txt`csv
+    python ../closest_observed_soundings/read_origin_email.py $f > $csv
+    python NARR_skewt.py $csv
+end

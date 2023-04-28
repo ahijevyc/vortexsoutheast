@@ -30,7 +30,7 @@ Bill03; upshr LZK 7/2/00z, dnshr FFC 7/2/00z
 Erin95; upshr MFL 8/2/12z, dnshr TLH 8/3/00z
 Danny97; upshr RNK 7/24/00z, dnshr CHS 7/24/00z
 Earl98; upshr BMX 9/3/00z, dnshr JAX 9/3/12z
-Frances98; uphsr BRO 9/12/00z, dnshr LCH 9/12/00z
+Frances98; upshr BRO 9/12/00z, dnshr LCH 9/12/00z
 Helene00; upshr JAN 9/22/12z, dnshr CHS 9/23/00z
 Allison01; upshr GSO 6/13/00z, dnshr CHS 6/13/00z
 Fay02; upshr BRO 9/7/06z, dnshr LCH 9/7/12z
@@ -74,7 +74,7 @@ Some TCTs:
 
 Allison95; upshr FFC 6/6/00z, dnshr JAX 6/5/12z
 Dean95; upshr CRP 7/31/00z, dnshr LCH 7/31/00z
-Bret99: upshr BRO 8/22/18z, dnshr CRP 8/23/00z
+Bret99; upshr BRO 8/22/18z, dnshr CRP 8/23/00z
 Barry01; upshr JAN 8/6/18z, dnshr BMX 8/7/00z
 Ernesto06; upshr GSO 9/1/12z, dnshr MHX 9/1/06z
 Erin07; upshr AMA 8/19/00z, dnshr OUN 8/19/00z

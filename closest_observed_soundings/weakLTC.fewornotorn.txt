@@ -6,14 +6,14 @@ Grace03; upshr CRP 9/1/00z, dnshr LCH 9/1/00z
 Arlene05; upshr LCH 6/12/00z, dnshr FFC 6/12/00z
 Humberto07; upshr FWD 9/14/12z, dnshr LIX 9/14/00z
 Edouard08; upshr CRP 8/5/12z, dnshr LCH 8/6/00z
-Jerry95; upshr TBW 8/8/12z, dnshr JAX 8/8/12z
+Jerry95; upshr TBW 8/24/12z, dnshr JAX 8/24/12z
 Fran96; upshr CHS 9/6/00z, dnshr WAL 9/6/12z
 Charley98; upshr BRO 8/22/12z, dnshr LCH 8/22/12z
 Edouard02; upshr TBW 9/5/12z, dnshr JAX 9/5/12z
-Matthew04; upshr LCH 9/1/00z, dnshr LIX 9/1/00z
+Matthew04; upshr LCH 10/10/12z, dnshr LIX 10/10/12z
 Dennis05; upshr JAN 7/11/00z, dnshr FFC 7/11/00z
 Tammy05; upshr TLH 10/6/12z, dnshr CHS 10/6/00z
-Sandy12; upshr IAD 10/3/00z, dnshr OKX 10/3/00z
+Sandy12; upshr IAD 10/30/00z, dnshr OKX 10/30/00z
 Ana15; upshr CHS 5/11/00z, dnshr MHX 5/10/12z
 Barry19; upshr CRP 7/14/00z, dnshr LIX 7/14/00z
 Zeta20; upshr LCH 10/29/00z, dnshr TLH 10/29/00z
