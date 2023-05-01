@@ -88,7 +88,7 @@ def main():
     fineprint = plt.annotate(text=text, xy=(2,1), xycoords=('figure pixels','figure pixels'), va="bottom", fontsize=6)
     if no_fineprint: fineprint.set_visible(False)
 
-    odir = "/glade/scratch/ahijevyc/vortexsoutheast/output/skewT"
+    odir = "/glade/scratch/ahijevyc/vortexsoutheast/output"
     svarx = shortstr(varx)
     svary = shortstr(vary)
     ofile = os.path.join(odir, f"{svarx}.{svary}.scatter.png")
