@@ -1,13 +1,13 @@
 import glob
 from metpy.units import units
 import os
+from pathlib import Path
 import spc
 import sys
 
-
 def composites():
     # get all files ending with .txt
-    c = glob.glob(os.path.join("/glade/scratch/ahijevyc/vortexsoutheast/categories", "*.txt"))
+    c = glob.glob(os.path.join(Path(__file__).parent.parent.absolute() , "categories" , "*.txt"))
     # split filename by periods and get first part
     cl = [os.path.splitext(os.path.basename(f))[0] for f in c]
     return set(cl)

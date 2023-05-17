@@ -31,7 +31,6 @@ Jeanne    2004092712
 Matthew   2004101009
 Arlene    2005061118
 Cindy     2005070612
-Dennis    2005071100
 Katrina   2005082912
 Rita      2005092412
 Tammy     2005100600

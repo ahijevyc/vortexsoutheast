@@ -9,6 +9,7 @@ import metpy.calc as mpcalc
 import narr
 import os
 import pandas as pd
+from pathlib import Path
 import pdb
 import seaborn as sns
 import sys
@@ -68,7 +69,7 @@ def main():
     colors = dict(upshr=teal, dnshr=red)
     ax = sns.scatterplot(data=obs, x=varx, y=vary, hue="place", palette=colors, style="LTC category",
             markers=["o","^","P"]) # Tried "+" instead of "s" (square) but ValueError: Filled and line art markers cannot be mixed. Tried "*" instead of "o" but star is too tiny.
-    plt.setp(ax.get_legend().get_texts(), fontsize='6') # for legend text
+    plt.setp(ax.get_legend().get_texts(), fontsize=5) # for legend text
  
     # one-to-one line
     ax.plot(ax.get_xlim(),ax.get_xlim(), color=gray, zorder=ax.get_zorder()-1)
@@ -78,21 +79,25 @@ def main():
         labels = obs[["time","station"]]
         labels = [f"{time.strftime('%Y%m%d')}\n{station}" for time,station in labels.values] 
         for x,y,s in zip(obs[varx],obs[vary],labels):
-            ax.text(x,y,s,fontsize=4, ha="center", va="center_baseline")
+            ax.text(x,y,s,fontsize='xx-small', ha="center", va="center_baseline")
 
-    text = f"Radiosonde Mean = {obs[vary].mean():.2f}\n"
-    text += f"NARR Error Magnitude = {abs(obs[varx] - obs[vary]).mean():.2f}\n"
+    assert len(obs) == len(narr)
+    text = f"n = {len(obs)}\n"
+    text += f"Radiosonde Mean = {obs[vary].mean():.2f}\n"
+    text += f"NARR Mean Absolute Error = {abs(obs[varx] - obs[vary]).mean():.2f}\n"
     text += f"NARR Bias = {obs[varx].mean() - obs[vary].mean():+.2f}\n"
     text += f"$R^2$ (Radiosonde, NARR) = {obs[varx].corr(obs[vary])**2:.2f}\n"
     text += f"created {datetime.datetime.now()}"
     fineprint = plt.annotate(text=text, xy=(2,1), xycoords=('figure pixels','figure pixels'), va="bottom", fontsize=6)
     if no_fineprint: fineprint.set_visible(False)
 
-    odir = "/glade/scratch/ahijevyc/vortexsoutheast/output"
+    odir = Path(__file__).parent.parent.absolute() / "output"
     svarx = shortstr(varx)
     svary = shortstr(vary)
     ofile = os.path.join(odir, f"{svarx}.{svary}.scatter.png")
     plt.tight_layout()
+    if label:
+        plt.show()
     plt.savefig(ofile,dpi=175)
     logging.info(f"made {os.path.realpath(ofile)}")
 

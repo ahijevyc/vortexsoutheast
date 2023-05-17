@@ -7,7 +7,7 @@ import narr
 import ncl
 import numpy as np
 import os
-import pandas as pd 
+import pandas as pd
 import pdb
 import pytz
 
@@ -41,15 +41,16 @@ def main():
 
     out = df.groupby(["stormname","narrtime"], group_keys=False).apply(getTCFlow, all_tracks, args)
     avg = out.mean(numeric_only=True)
+    assert len(df) == len(out), f"{df} {out} not equal length"
     u, v = metpy.calc.wind_components(avg.wind_shear_speed*units.meter/units.second, avg.wind_shear_heading * units.deg + 180*units.deg)
-    print(f"avg u={u:~.2f} avg v={v:~.2f} avg shear mag={avg.wind_shear_speed:.2f}")
+    print(f"n={len(df)} avg u={u:~.2f} avg v={v:~.2f} avg shear mag={avg.wind_shear_speed:.2f}")
 
 fmt = '%Y%m%d%H'
 def getTCFlow(df, all_tracks, args):
     stormname, narrtime = df.name
     year = narrtime.year
     logging.debug(f"{stormname} {narrtime} {year}")
-    file_ncl = narr.get(narrtime, narrtype=narr.narr3D, targetdir=os.path.join("/glade/scratch",os.getenv('USER'),"NARR"))
+    file_ncl = narr.get(narrtime, narrtype=narr.narr3D, targetdir="/glade/scratch/ahijevyc/NARR")
     imatch = (all_tracks['stormname'] == stormname.upper()) & (all_tracks['valid_time'].dt.year == year)
     trackdf = all_tracks[imatch]
     if narrtime > trackdf.valid_time.max():

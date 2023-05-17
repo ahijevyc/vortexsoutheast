@@ -10,7 +10,6 @@ Grace     2003083112
 Isabel    2003091818
 Matthew   2004101009
 Arlene    2005061118
-Dennis    2005071100
 Tammy     2005100600
 Humberto  2007091312
 Edouard   2008080512

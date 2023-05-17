@@ -19,6 +19,7 @@ import narr
 import numpy as np
 import os
 import pandas as pd
+from pathlib import Path
 import pdb
 from siphon.simplewebservice.wyoming import WyomingUpperAir
 import sys
@@ -31,7 +32,7 @@ def getparser():
     parser = argparse.ArgumentParser(description='skew t of output from NARR', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-d','--debug', action="store_true", help='print debug messages')
     parser.add_argument('-f','--force_new', action="store_true", help='overwrite old file')
-    parser.add_argument('ifile', type=argparse.FileType("r"), help='input csv file with initialization time,station')
+    parser.add_argument('ifile', type=argparse.FileType("r"), help='input csv file with storm,initialization time,shr,station')
     parser.add_argument("--no-fineprint", action='store_true', help="Don't write details at bottom of image")
     parser.add_argument('--pmin', type=int, default=100, help='mask values below this pressure')
     return parser
@@ -49,6 +50,9 @@ def main():
     logging.getLogger().setLevel(level)
 
     logging.debug(args)
+
+    cape_cinkw = dict(which_lfc="most_cape",which_el="most_cape")
+    logging.debug(cape_cinkw)
 
     df = pd.read_csv(ifile, names=["storm","itime","place","station"], parse_dates=["itime"])
     assert df["place"].isin(["upshr","dnshr"]).all(), "expected place to be upshr or dnshr"
@@ -91,8 +95,8 @@ def main():
         obs = pandas_dataframe_to_unit_arrays(obs, column_units=udict)
         slon = obs["longitude"][0]
         slat = obs["latitude"][0]
-        # put slon and slat in lists because dist_bearing expects iterables in args 3,4
-        distance_from_TCcenter, bearing_from_TCcenter = dist_bearing(TC.lon*units.deg, TC.lat*units.deg, [slon], [slat])
+        # put slon and slat in numpy arrays because dist_bearing expects args 3 and 4 to have .max and .min methods and be iterable
+        distance_from_TCcenter, bearing_from_TCcenter = dist_bearing(TC.lon*units.deg, TC.lat*units.deg, np.array(slon), np.array(slat))
         sigps = [1000, 925, 850, 700, 500, 400, 300, 200, 100] * units.hPa
         od = {}
         for stype in ["NARR", "obs"]:
@@ -165,9 +169,11 @@ def main():
                 od["narr mlcape"]    = narr.scalardata('mlcape', itime).isel(imin).data.compute()
                 od["narr mlcinh"]    = narr.scalardata('mlcinh', itime).isel(imin).data.compute()
                 od["narr 0degC rh"]  = narr.scalardata('rh_0deg', itime).isel(imin).data.compute()
+                od["narr srh"]       = narr.scalardata('srh', itime).isel(imin).data.compute()
                 # compute() to avoid TypeError: len() of unsized object when printing LCL text
                 # seems to be too high up in NARR. derive it from 1000 hPa parcel instead
                 #od["narr lcl_pressure"]   = narr.scalardata('lcl', itime).isel(imin).data.compute()
+                # TODO: prepend psfc & pwat with `narr `
                 od["psfc"]           = narr.scalardata('psfc', itime).isel(imin).data.compute()
                 od["pwat"]           = narr.scalardata('pwat', itime).isel(imin).data.compute() * units.m**3 / (1000*units.kg)
                 od["pwat"]           = od["pwat"].to("mm")
@@ -224,7 +230,7 @@ def main():
             skew.ax.plot([0.83,0.85], 2*[od["lcl_pressure"].m], transform=trans)
             skew.ax.text(0.855,od["lcl_pressure"],f'sfc LCL ({od["lcl_pressure"]:~.0f})', transform=trans, ha="left", va="center", fontsize='x-small')
 
-            sfcape, sfcin = mpcalc.cape_cin(p,Tv,Td,profTv)
+            sfcape, sfcin = mpcalc.cape_cin(p,Tv,Td,profTv, **cape_cinkw)
             storm_u = 0. * units.m / units.s
             storm_v = 0. * units.m / units.s
             right_mover, left_mover, wind_mean = mpcalc.bunkers_storm_motion(p, u, v, height)
@@ -243,6 +249,7 @@ def main():
             od["lat"] = lat
             od["lowest level temp"] = T[0]
             od["lowest level dwpt"] = Td[0]
+            # TODO: prepend these mpcalc derivations with `narr ` ? or are the derivations too simple to worry about?
             od["lowest level rh"] = mpcalc.relative_humidity_from_dewpoint(T[0], Td[0])
             od["lowest level theta"] = mpcalc.potential_temperature(p[0], T[0])
             od["lowest level thetae"] = mpcalc.equivalent_potential_temperature(p[0], T[0], Td[0])
@@ -252,16 +259,16 @@ def main():
             od["metpy sfcin"] = sfcin
             od["storm_u"] = storm_u
             od["storm_v"] = storm_v
-            od["sfc-5km shr mag"] = mpcalc.wind_speed(*mpcalc.bulk_shear(p, u, v, height, bottom=height.min(), depth=5*units.km))
-            od["sfc-3km shr mag"] = mpcalc.wind_speed(*mpcalc.bulk_shear(p, u, v, height, bottom=height.min(), depth=3*units.km))
-            od["sfc-1km shr mag"] = mpcalc.wind_speed(*mpcalc.bulk_shear(p, u, v, height, bottom=height.min(), depth=1*units.km))
+            od["metpy sfc-5km shr mag"] = mpcalc.wind_speed(*mpcalc.bulk_shear(p, u, v, height, bottom=height.min(), depth=5*units.km))
+            od["metpy sfc-3km shr mag"] = mpcalc.wind_speed(*mpcalc.bulk_shear(p, u, v, height, bottom=height.min(), depth=3*units.km))
+            od["metpy sfc-1km shr mag"] = mpcalc.wind_speed(*mpcalc.bulk_shear(p, u, v, height, bottom=height.min(), depth=1*units.km))
             od["metpy srh03+"] = srh03_pos
             od["metpy srh03-"] = srh03_neg
             od["metpy srh03"] = srh03_tot
             od["metpy srh01+"] = srh01_pos
             od["metpy srh01-"] = srh01_neg
             od["metpy srh01"] = srh01_tot
-            #mlcape,mlcin = mpcalc.mixed_layer_cape_cin(p,Tv,Td,height=height,depth=30*units.hPa) # not sure how metpy deals with Tv. 
+            #mlcape,mlcin = mpcalc.mixed_layer_cape_cin(p,Tv,Td,height=height,depth=30*units.hPa, **cape_cinkw) # not sure how metpy deals with Tv. 
             #od["metpy mlcape"] = mlcape
             #od["metpy mlcin"] = mlcin
             od["sounding list"] = ifile
@@ -313,7 +320,7 @@ def main():
             fineprint = plt.annotate(text=text, xy=(2,1), xycoords=('figure pixels','figure pixels'), va="bottom", fontsize=6)
             if no_fineprint: fineprint.set_visible(False)
 
-            odir = "/glade/scratch/ahijevyc/vortexsoutheast/output/skewT"
+            odir = Path(__file__).parent.parent.absolute() / "output" / "skewT"
             ofile = os.path.join(odir, f"{itime.strftime('%Y%m%dT%H%M')}.{station}.{stype}.skewt.png")
             plt.savefig(ofile)
             logging.info(f"made {os.path.realpath(ofile)}")
