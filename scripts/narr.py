@@ -457,6 +457,7 @@ def multiInterp(x, xp, fp):
     assert xp.shape == fp.shape, f'narr.multiInterp(): shapes of xp and fp differ {xp.shape} {fp.shape}'
     # xp>x is False below the vertical layer that encompasses target
     # Once xp>x turns True, the np.diff function keeps the first occurrence of True in the vertical.
+    x = x.compute() # compute dask array to avoid TypeError: unsupported operand type(s) for -: 'Array' and 'Array' in np.diff
     bb = np.diff(xp>x,axis=0) # 3d boolean array. True at start of vertical layer that encompasses target
     k = bb.argmax(axis=0) # vertical index of start of vertical layer that encompasses target
     ij = np.indices(x.shape)
@@ -554,6 +555,9 @@ def scalardata(field: str, valid_time: datetime.datetime, targetdir: str = targe
         data.attrs['long_name'] = "equivalent potential temperature"
     elif field == 'scp' or field == 'stp' or field.startswith('tctp'):
         cape, cin, srh = data.data_vars.values()
+        # compute to avoid ValueError: Cannot compare PlainQuantity and <class 'dask.array.core.Array'> in cin_term
+        # quantify to avoid pint.errors.DimensionalityError: Cannot convert from 'dimensionless' to 'joule / kilogram' in cin_term
+        cin = cin.compute().metpy.quantify()
         lifted_condensation_level_height = scalardata('zlcl', valid_time, targetdir=targetdir)
         if field == 'scp':
             bulk_shear = scalardata('shr10m_500hPa', valid_time, targetdir=targetdir)

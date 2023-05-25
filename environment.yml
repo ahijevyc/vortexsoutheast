@@ -1,4 +1,4 @@
-name: vortexsoutheast
+name: vse
 channels:
   - conda-forge
   - defaults

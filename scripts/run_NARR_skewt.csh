@@ -1,6 +1,6 @@
 #!/bin/csh
 module load conda
-conda activate vortexsoutheast
+conda activate vse
 foreach f (\
     ../closest_observed_soundings/sometorn.txt \
     ../closest_observed_soundings/strongLTC.manytorn.txt\

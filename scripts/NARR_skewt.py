@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import matplotlib.transforms as transforms
 from metpy.interpolate import interpolate_1d
 # SkewT segfaults when outside of base conda env on casper
-# errors with different units registries if you use base conda env. use `vortexsoutheast` conda env
+# errors with different units registries if you use base conda env. use `vse` conda env
 from metpy.plots import Hodograph, SkewT
 from metpy.units import units, pandas_dataframe_to_unit_arrays
 import metpy.calc as mpcalc
