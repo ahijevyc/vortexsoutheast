@@ -12,7 +12,7 @@ set b=b.csh
 if (-e $b) rm $b
 foreach desc ($repo/categories/*.txt)
     set desc=`basename $desc .txt`
-    if ( $desc !~ strong* ) continue
+    #if ( $desc !~ strong* ) continue
     foreach hh (0003 0609 1215 1821 03060912 15182100 0003060912151821)
         foreach filllinebarb (`cat $repo/scripts/filllinebarb.txt` `cat $repo/CM1_input_fields.txt`)
             set split=($filllinebarb:as,/, ,)

@@ -21,7 +21,7 @@ set normalize_str=""
 #set normalize_str="--normalize_by Vt500km"
 
 # Hours in time window
-set time_window_hours=6
+set time_window_hours=24
 @ walltime = ( 2 + $time_window_hours / 3 )
 set anchor_hour=0
 
@@ -53,7 +53,8 @@ foreach filllinebarb (`cat $repo/scripts/filllinebarb.txt` `cat $CM1`)
         set lineargs=""
     else
         # line contour argumements, and add line to output file name
-        if ($line =~ *cape) set lineargs="--line $line --clev 500 1000 2000" 
+        if ($line =~ s?cape) set lineargs="--line $line --clev 500 1000 2000" 
+        if ($line =~ mlcape) set lineargs="--line $line --clev 250 500 1000 1500 2000" 
         if ($line =~ shr10m_*) set lineargs="--line $line --clev 4 8 12 16" 
         if ($line == srh) set lineargs="--line $line --clev 150 200 300" 
         set line="$line."
