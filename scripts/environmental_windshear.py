@@ -62,8 +62,10 @@ def main():
     print(f"n={len(df)} avg shear mag={avg.wind_shear_speed:.2f} "
             f"avg cross={avg.shear_x_motion:.1f} avg cross_norm={avg.shear_x_motion_norm:.1} "
             f"shear right of motion={avg.shear_rt_of_motion:.1%}")
-    ofile = Path(__file__).parent.parent / "output" / "env_windshear.csv"
-    out.to_csv(ofile)
+    base, ext = os.path.splitext(ifile) # separate extension and ignore
+    ofile = Path(__file__).parent.parent / "output" / f"{base}.env_windshear.csv"
+    # Output numeric columns
+    out.select_dtypes(include=[np.number]).to_csv(ofile)
     logging.warning(f"write {ofile}")
 
 fmt = '%Y%m%d%H'
