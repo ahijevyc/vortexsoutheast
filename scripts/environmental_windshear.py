@@ -16,18 +16,18 @@ import pytz
 def main():
     # =============Arguments===================
     parser = argparse.ArgumentParser(description = "NARR env shear", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("-d", "--debug", action='store_true')
+    parser.add_argument("-d", "--debug", action='store_true', help="more debug messages and pdb.set_trace before ending")
     parser.add_argument("-n", action='store_true', help='list missing storm and times but do not fill them')
     parser.add_argument("ifile", help="text file. each line starts with a storm name, followed by a yyyymmddhh time"
-            "like $TMPDIR/strong_LTC_many_tornadoes.0003060912151821z.txt"
-            "you don't want the category files because they only have the first hour of the diurnal cycle")
+            "like $TMPDIR/strong_LTC_many_tornadoes.0003060912151821z.txt "
+            "Don't provide the category files because they only have the first hour of the diurnal cycle")
 
     # Assign arguments to simple-named variables
     args = parser.parse_args()
     debug = args.debug
     ifile = args.ifile
 
-    logging.basicConfig(format='%(asctime)s %(message)s', level=logging.WARNING, force=True)
+    logging.basicConfig(format='%(asctime)s %(message)s')
     if debug:
         logger = logging.getLogger().setLevel(logging.DEBUG)
 
@@ -53,20 +53,29 @@ def main():
     assert all(df.groupby("stormname").narrtime.count() > 1), (  
             "You should have multiple narrtimes for each storm. Use file like $TMPDIR/strong_LTC_many_tornadoes.0003060912151821z.txt\n"
             "you don't want the category files because they only have the first hour of the diurnal cycle")
-    print(out)
+    if debug:
+        print(out)
     avg = out.mean(numeric_only=True)
     assert len(df) == len(out), f"{df} {out} not equal length"
     # Not sure why I calculated du and dv. they are just the components of the imaginary vector with magnitude equal to average wind shear magnitude
     # at each time and heading equal to the mean of the wind shear headings (not a valid, circular average)
     u, v = metpy.calc.wind_components(avg.wind_shear_speed*units.meter/units.second, avg.wind_shear_heading * units.deg + 180*units.deg)
-    print(f"n={len(df)} avg shear mag={avg.wind_shear_speed:.2f} "
-            f"avg cross={avg.shear_x_motion:.1f} avg cross_norm={avg.shear_x_motion_norm:.1} "
-            f"shear right of motion={avg.shear_rt_of_motion:.1%}")
+    out["year"] = pd.to_datetime(out.init,format="%Y-%m-%d_%H:%M:%S").dt.year
+    print(f"{os.path.basename(ifile).replace('.0003060912151821z.txt','').center(53)}  "
+           # f"n={len(df)} avg shear mag={avg.wind_shear_speed:.2f}  "
+           # f"avg cross={avg.shear_x_motion:.1f} avg cross_norm={avg.shear_x_motion_norm:.1}  "
+           # f"shear right of motion={avg.shear_rt_of_motion:.1%}  "
+            f"{out.groupby(['ensmember','year']).ngroups} cases  "
+            f"{np.sqrt(wind_shear_vector[0].mean()**2+wind_shear_vector[1].mean()**2):~5.2f}  "
+            f"{metpy.calc.wind_direction(wind_shear_vector[0].mean(), wind_shear_vector[1].mean()):~.0f}")
     base, ext = os.path.splitext(ifile) # separate extension and ignore
     ofile = Path(__file__).parent.parent / "output" / f"{base}.env_windshear.csv"
     # Output numeric columns
     out.select_dtypes(include=[np.number]).to_csv(ofile)
-    logging.warning(f"write {ofile}")
+    logging.info(f"write {ofile}")
+
+    if debug:
+        pdb.set_trace()
 
 fmt = '%Y%m%d%H'
 def getTCFlow(df, all_tracks, args):
