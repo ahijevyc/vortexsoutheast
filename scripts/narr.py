@@ -673,7 +673,7 @@ def cartplot(args, lon, lat, dist_from_center, bearing, data, storm, storm_repor
 
     c = axc.contour(lon, lat, dist_from_center, levels=np.arange(0,args.max_range+200,200), colors='black', alpha=0.8, transform=cartopy.crs.PlateCarree())
     axc.clabel(c, fontsize='xx-small', fmt='%ikm')
-    c = axc.contour(lon, lat, bearing, levels=range(0,360,45), colors='black', alpha=0.8, transform=cartopy.crs.PlateCarree())
+    c = axc.contour(lon, lat, bearing, levels=range(0,360,90), colors='black', alpha=0.8, transform=cartopy.crs.PlateCarree())
     axc.clabel(c, fontsize='xx-small', fmt='%i')
 
     if not storm_reports.empty:

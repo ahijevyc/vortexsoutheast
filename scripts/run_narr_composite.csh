@@ -116,8 +116,8 @@ END
         @ i_time_window++
 
 
-        #echo qsub $batch
-        qsub $batch
+        echo qsub $batch
+        #qsub $batch
     end
     
 end
