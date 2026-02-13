@@ -11,7 +11,6 @@ import metpy.calc as mcalc
 import numpy as np
 import os
 import pytz
-import re
 from ahijevyc import spc
 import subprocess
 import sys
@@ -26,13 +25,10 @@ narr3D = ("3D", "3D")
 narrFixed = "/glade/scratch/" + os.getenv("USER") + "/NARR/rr-fixed.grb.nc"
 targetdir = os.path.join("/glade/scratch", os.getenv("USER"), "NARR")
 
-re = 6371200
-# spherical globe
 data_crs = cartopy.crs.LambertConformal(
     central_latitude=1,
     central_longitude=-107,
     standard_parallels=[50.0, 50.0],
-    globe=cartopy.crs.Globe(semimajor_axis=re, semiminor_axis=re),
 )
 
 # Modify fieldinfo dictionary for NARR.
@@ -51,11 +47,11 @@ def fstr(f, lev):
 
 
 # wind, hgt, rh, sh, temp at all possible vertical levels
-levs = [l * units.meters for l in [10, 30, 1000, 1500, 3000, 5000, 6000]]
+levs = [lev * units.meters for lev in [10, 30, 1000, 1500, 3000, 5000, 6000]]
 levs.extend(
     np.arange(100, 1025, 25) * units.hPa
 )  # large range useful for Chris Rozoff's CM1 model. Use wide range to prevent "out of contour range" error in NARR_composite.py.
-levs.extend([l * units.dimensionless for l in ["lev1", "trop"]])
+levs.extend([lev * units.dimensionless for lev in ["lev1", "trop"]])
 for lev in levs:
     for ws in ["wind", "speed", "u", "v", "vort", "div"]:
         f = fstr(ws, lev)
@@ -376,7 +372,7 @@ def get(valid_time, targetdir=targetdir, narrtype=narr3D):
             logging.info(
                 f"extracting {os.path.basename(narr_grb)} from tar file {narrtar}"
             )
-            ret = tar.extract(os.path.basename(narr_grb), path=targetdir)
+            tar.extract(os.path.basename(narr_grb), path=targetdir)
         call_args = ["ncl_convert2nc", narr_grb, "-e", "grb", "-o", targetdir]
         logging.debug(call_args)
         # Tried using pygrib or xarray.open_dataset(engine="cfgrib"), but neither was as good as ncl_convert2nc, even though
@@ -917,7 +913,7 @@ def cartplot(
             levels=args.clevels,
             transform=cartopy.crs.PlateCarree(),
         )
-        line_contour_labels = axc.clabel(line_contour, fontsize=5, fmt="%.0f")
+        axc.clabel(line_contour, fontsize=5, fmt="%.0f")
     if barbdata is not None:
         axc.barbs(
             lon.data.flatten(),
@@ -1051,6 +1047,6 @@ def fromskewtds(nc, field):
     elif field == "srh3":
         print(f"Can't derive {field} yet")
     else:
-        data = nc[fvar]
+        data = nc[field]
 
     return data
