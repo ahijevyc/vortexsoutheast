@@ -1,19 +1,20 @@
-import cartopy
 import datetime
-from fieldinfo import fieldinfo, readNCLcm
-import glob
 import itertools
 import logging
+import os
+from pathlib import Path
+import sys
+
+import cartopy
+from fieldinfo import fieldinfo, readNCLcm
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from metpy.units import units
 import metpy.calc as mcalc
 import numpy as np
-import os
 import pytz
 from ahijevyc import spc
 import subprocess
-import sys
 import tarfile
 import xarray
 
@@ -22,8 +23,8 @@ narrSfc = ("sfc", "RS.sfc")
 narrFlx = ("flx", "RS.flx")
 narrPBL = ("pbl", "RS.pbl")
 narr3D = ("3D", "3D")
-narrFixed = "/glade/scratch/" + os.getenv("USER") + "/NARR/rr-fixed.grb.nc"
-targetdir = os.path.join("/glade/scratch", os.getenv("USER"), "NARR")
+targetdir = Path(os.getenv("SCRATCH")) / "NARR"
+narrFixed = targetdir / "rr-fixed.grb.nc"
 
 data_crs = cartopy.crs.LambertConformal(
     central_latitude=1,
@@ -52,242 +53,252 @@ levs.extend(
     np.arange(100, 1025, 25) * units.hPa
 )  # large range useful for Chris Rozoff's CM1 model. Use wide range to prevent "out of contour range" error in NARR_composite.py.
 levs.extend([lev * units.dimensionless for lev in ["lev1", "trop"]])
+
+# --- 1. CONFIGURATION TEMPLATES ---
+TEMPLATES = {
+    "vort": {"levels": np.arange(-4, 40, 4), "cmap": "wind_17lev"},
+    "div": {"levels": np.arange(-18, 22, 4), "cmap": "BlueWhiteOrangeRed"},
+    "u": {"levels": range(-22, 26, 4), "cmap": "cmocean_balance", "idx": 0},
+    "v": {"levels": range(-22, 26, 4), "cmap": "cmocean_balance", "idx": 1},
+    "speed": {"levels": range(2, 34, 2), "cmap": "wind_17lev"},
+    "wind": {"levels": range(2, 34, 2), "cmap": "wind_17lev"},
+    "hgt": {"levels": range(0, 17000, 500), "cmap": "nice_gfdl", "var": "HGT"},
+    "temp": {
+        "levels": range(-65, 30, 5),
+        "cmap": "nice_gfdl",
+        "var": "TMP",
+        "units": "degC",
+    },
+    "sh": {
+        "levels": [1e-11, 0.01, 0.1, 1, 5, 10, 15, 20, 25],
+        "cmap": "nice_gfdl",
+        "var": "SPF_H",
+        "units": "g/kg",
+    },
+    "rh": {
+        "levels": range(0, 100, 10),
+        "cmap": "CBR_drywet",
+        "var": ["TMP", "SPF_H"],
+        "units": "percent",
+    },
+}
+
+# --- 2. DYNAMIC LEVEL GENERATION ---
 for lev in levs:
-    for ws in ["wind", "speed", "u", "v", "vort", "div"]:
-        f = fstr(ws, lev)
-        fieldinfo[f]["levels"] = range(2, 34, 2)
-        fieldinfo[f]["cmap"] = readNCLcm("wind_17lev")
-        if ws == "vort":
-            fieldinfo[f]["levels"] = np.arange(-4, 40, 4)
-        if ws == "div":
-            fieldinfo[f]["levels"] = np.arange(-18, 22, 4)
-            fieldinfo[f]["cmap"] = readNCLcm("BlueWhiteOrangeRed")
-        if lev.units == units.hPa:
-            fieldinfo[f]["fname"] = [
-                "U_GRD_221_ISBL",
-                "V_GRD_221_ISBL",
-            ]  # changed to get vector data
-        elif lev.units == units.meters:
-            fieldinfo[f]["fname"] = ["U_GRD_221_HTGL", "V_GRD_221_HTGL"]
+    suffix = "HTGL" if hasattr(lev, "units") and lev.units == units.meters else "ISBL"
+
+    for key, spec in TEMPLATES.items():
+        f = fstr(key, lev)
+        info = fieldinfo[f]
+        info["vertical"] = lev
+        info["levels"] = spec["levels"]
+
+        raw_cmap = readNCLcm(spec["cmap"])
+        if spec["cmap"] == "nice_gfdl":
+            info["cmap"] = raw_cmap[3:193]
+        elif spec["cmap"] == "CBR_drywet":
+            info["cmap"] = raw_cmap[1:-1]
         else:
-            fieldinfo[f]["fname"] = [None, None]
-        fieldinfo[f]["vertical"] = lev
-        # fieldinfo[f]['units'] = 'knots' # should remain m/s for publications
-        if ws == "u" or ws == "v":  # wind component can be negative or positive
-            fieldinfo[f]["levels"] = range(-22, 26, 4)
-            fieldinfo[f]["cmap"] = readNCLcm("cmocean_balance")
-        if ws == "u":
-            fieldinfo[f]["sel"] = fieldinfo[f]["fname"][0]
-        if ws == "v":
-            fieldinfo[f]["sel"] = fieldinfo[f]["fname"][1]
-    hgt = fstr("hgt", lev)
-    fieldinfo[hgt]["levels"] = range(0, 17000, 500)
-    fieldinfo[hgt]["cmap"] = readNCLcm("nice_gfdl")[3:193]
-    fieldinfo[hgt]["fname"] = "HGT_221_ISBL"
-    fieldinfo[hgt]["vertical"] = lev
-    sh = fstr("sh", lev)
-    fieldinfo[sh]["levels"] = [1e-11, 0.01, 0.1, 1, 5, 10, 15, 20, 25]
-    fieldinfo[sh]["cmap"] = readNCLcm("nice_gfdl")[3:193]
-    fieldinfo[sh]["fname"] = "SPF_H_221_ISBL"
-    fieldinfo[sh]["vertical"] = lev
-    fieldinfo[sh]["units"] = "g/kg"
-    temp = fstr("temp", lev)
-    fieldinfo[temp]["levels"] = range(-65, 30, 5)
-    fieldinfo[temp]["cmap"] = readNCLcm("nice_gfdl")[3:193]
-    fieldinfo[temp]["fname"] = "TMP_221_ISBL"
-    fieldinfo[temp]["vertical"] = lev
-    fieldinfo[temp]["units"] = "degC"
-    rh = fstr("rh", lev)
-    fieldinfo[rh]["levels"] = range(0, 100, 10)
-    fieldinfo[rh]["cmap"] = readNCLcm("CBR_drywet")[
-        1:-1
-    ]  # take out 2 darkest colors so black shows up on top of them.
-    fieldinfo[rh]["fname"] = ["TMP_221_ISBL", "SPF_H_221_ISBL"]
-    fieldinfo[rh]["vertical"] = lev
-    fieldinfo[rh]["units"] = "percent"
+            info["cmap"] = raw_cmap
+
+        if "var" in spec:
+            v = spec["var"]
+            info["fname"] = (
+                [f"{i}_221_{suffix}" for i in v]
+                if isinstance(v, list)
+                else f"{v}_221_{suffix}"
+            )
+            if "units" in spec:
+                info["units"] = spec["units"]
+        else:
+            info["fname"] = [f"U_GRD_221_{suffix}", f"V_GRD_221_{suffix}"]
+            if "idx" in spec:
+                info["sel"] = info["fname"][spec["idx"]]
+
     vvel = fstr("vvel", lev)
     fieldinfo[vvel] = {
         "levels": [-250, -100, -25, -10, -2.5, -1, 1, 2.5, 10, 25, 100, 250],
         "cmap": readNCLcm("cmocean_balance")[::-1],
-        "fname": "V_VEL_221_ISBL",
+        "fname": f"V_VEL_221_{suffix}",
+        "vertical": lev,
+        "units": "microbar/second",
     }
     fieldinfo[vvel]["cmap"][127] = "white"
-    fieldinfo[vvel]["vertical"] = lev
-    fieldinfo[vvel]["units"] = "microbar/second"
-fieldinfo["bunkers"]["fname"] = ["USTM_221_HTGY", "VSTM_221_HTGY"]
-# fieldinfo['hfx'] = {'levels' : [-640,-320,-160,-80,-40,-20,-10,0,5,10,15,20,40,60,80], 'cmap':readNCLcm('amwg256')[::-1], 'fname'  : ['SHTFL_221_SFC'] }
-fieldinfo["hfx"] = {
-    "levels": list(range(-600, 125, 25)),
-    "cmap": readNCLcm("amwg256")[::-1],
-    "fname": "SHTFL_221_SFC",
-}  # NARR sfc flux is upward (highly negative in day)
+
+# --- 3. SURFACE & SPECIALIZED FIELDS ---
+SURFACE_FIELDS = {
+    "hfx": {
+        "levels": list(range(-600, 125, 25)),
+        "cmap": readNCLcm("amwg256")[::-1],
+        "fname": "SHTFL_221_SFC",
+    },
+    "lh": {
+        "levels": list(range(-700, 150, 50)),
+        "cmap": readNCLcm("MPL_BrBG")[127:30:-1],
+        "fname": "LHTFL_221_SFC",
+    },
+    "mslp": {
+        "fname": "PRMSL_221_MSL",
+        "levels": np.arange(956, 1028, 4),
+        "units": "hPa",
+    },
+    "pblh": {"fname": "HPBL_221_SFC"},
+    "t2": {"fname": "TMP_221_SFC", "units": "degF"},
+    "sbcape": {"fname": "CAPE_221_SFC", "vertical": "surface-based"},
+    "pwat": {
+        "levels": [20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70],
+        "fname": "P_WAT_221_EATM",
+        "temporal": 0,
+    },
+    "surface_height": {"fname": "HGT_221_SFC"},
+    "bunkers": {
+        "fname": ["USTM_221_HTGY", "VSTM_221_HTGY"],
+        "levels": range(0, 60, 10),
+        "vertical": "0-6km AGL",
+    },
+    "lcl": {
+        "fname": "PRES_221_ADCL",
+        "levels": [500, 600, 700, 750, 800, 850, 875, 900, 925, 950, 975, 1000],
+        "units": "hPa",
+    },
+    "precipacc": {"fname": "RAINNC"},
+    "shrtrop": {
+        "levels": np.array([2, 5, 10, 15, 20, 30, 50]) * 1e-3,
+        "fname": "VWSH_221_TRO",
+        "vertical": "tropopause",
+    },
+}
+
+for key, spec in SURFACE_FIELDS.items():
+    fieldinfo[key].update(spec)
+
+# Logic Overrides
+fieldinfo["mslet"].update(fieldinfo["mslp"])
+fieldinfo["mslet"]["fname"] = "MSLET_221_MSL"
+
+fieldinfo["psfc"].update(fieldinfo["mslp"])
+fieldinfo["psfc"]["fname"] = "PRES_221_SFC"
+
+fieldinfo["zlcl"]["fname"] = ["PRES_221_ADCL", "HGT_221_ISBL"]
 fieldinfo["lcl"]["cmap"] = [
     readNCLcm("nice_gfdl")[i]
     for i in [3, 20, 37, 54, 72, 89, 106, 123, 141, 158, 175, 193]
-]
-fieldinfo["lcl"]["cmap"].reverse()
-fieldinfo["lcl"]["fname"] = "PRES_221_ADCL"
-fieldinfo["lcl"]["levels"] = [
-    500,
-    600,
-    700,
-    750,
-    800,
-    850,
-    875,
-    900,
-    925,
-    950,
-    975,
-    1000,
-]
-fieldinfo["lcl"]["units"] = "hPa"
-fieldinfo["zlcl"]["fname"] = [
-    "PRES_221_ADCL",
-    "HGT_221_ISBL",
-]  # zlcl cmap and levels initialized in fieldinfo.py.
-# fieldinfo['lh']  = {'levels' : [-1280,-640,-320,-160,-80,-40,-20,0,10,20,40], 'cmap':readNCLcm('MPL_BrBG')[127:40:-1], 'fname'  : ['LHTFL_221_SFC'] }
-fieldinfo["lh"] = {
-    "levels": list(range(-700, 150, 50)),
-    "cmap": readNCLcm("MPL_BrBG")[127:30:-1],
-    "fname": "LHTFL_221_SFC",
-}
-fieldinfo["mslp"]["fname"] = "PRMSL_221_MSL"
-fieldinfo["mslp"]["levels"] = np.arange(956, 1028, 4)
-fieldinfo["mslp"]["units"] = "hPa"
-fieldinfo["mslet"] = fieldinfo["mslp"].copy()
-fieldinfo["mslet"] = "MSLET_221_MSL"
-fieldinfo["sbcape"]["fname"] = "CAPE_221_SFC"
-fieldinfo["sbcape"]["vertical"] = "surface-based"
+][::-1]
+
+fieldinfo["sbcinh"].update({"fname": "CIN_221_SFC", "vertical": "surface-based"})
 fieldinfo["sbcinh"]["cmap"].reverse()
-fieldinfo["sbcinh"]["fname"] = "CIN_221_SFC"
-fieldinfo["sbcinh"]["levels"].reverse()
 fieldinfo["sbcinh"]["levels"] = [
-    -np.round(x / 2) for x in fieldinfo["sbcinh"]["levels"]
-]  # NARR cin is negative, and halve levels
-fieldinfo["sbcinh"]["vertical"] = "surface-based"
-fieldinfo["mlcape"]["fname"] = (
-    "CAPE_221_SPDY"  # 180-0 mb above ground (according to grib1 in /glade/collections/rda/data/ds608.0/3HRLY and https://rda.ucar.edu/datasets/ds608.0/#!docs)
-)
-fieldinfo["mlcape"]["vertical"] = "mixed-layer"
-fieldinfo["mlcinh"] = fieldinfo["sbcinh"].copy()
-fieldinfo["mlcinh"]["fname"] = "CIN_221_SPDY"
-fieldinfo["mlcinh"]["vertical"] = "mixed-layer"
+    -np.round(x / 2) for x in reversed(fieldinfo["sbcinh"]["levels"])
+]
+
+# CAPE/CIN Mixes
+fieldinfo["mlcape"].update({"fname": "CAPE_221_SPDY", "vertical": "mixed-layer"})
+fieldinfo["mlcinh"].update(fieldinfo["sbcinh"])
+fieldinfo["mlcinh"].update({"fname": "CIN_221_SPDY", "vertical": "mixed-layer"})
 fieldinfo["mucape"]["vertical"] = "most unstable"
-fieldinfo["pblh"]["fname"] = "HPBL_221_SFC"
-fieldinfo["precipacc"]["fname"] = "RAINNC"
-fieldinfo["psfc"] = fieldinfo["mslp"].copy()
-fieldinfo["psfc"]["fname"] = "PRES_221_SFC"
-fieldinfo["pwat"]["levels"] = [
-    20,
-    25,
-    30,
-    35,
-    40,
-    45,
-    50,
-    55,
-    60,
-    65,
-    70,
-]  # precipitable water in kg/m**2 not depth-of-water
-fieldinfo["pwat"]["fname"] = "P_WAT_221_EATM"
-fieldinfo["pwat"]["temporal"] = (
-    0  # P_WAT_221_EATM has 0 and 3-h forecast, for some reason.
-)
-fieldinfo["rh_0deg"] = fieldinfo["rh700"].copy()
-fieldinfo["rh_0deg"]["fname"] = "R_H_221_0DEG"
-fieldinfo["rh_0deg"]["vertical"] = "freezing level"  # overwrite 'vertical' from rh700
-fieldinfo["rh2"] = fieldinfo["rh700hPa"].copy()
-fieldinfo["rh2"]["fname"] = "R_H_221_HTGL"
-fieldinfo["rh2"]["vertical"] = 2 * units.meters
-fieldinfo["rhlev1"] = fieldinfo["rh700hPa"].copy()
-fieldinfo["rhlev1"]["fname"] = "R_H_221_HYBL"
-fieldinfo["rhlev1"]["vertical"] = "lowest model level"
-fieldinfo["scp"] = fieldinfo["stp"].copy()  # stp is in fieldinfo but scp is not
-fieldinfo["sh2"] = {
-    "levels": [0.5, 1, 2, 4, 8, 12, 14, 16, 17, 18, 19, 20, 21, 22, 23, 24],
-    "cmap": fieldinfo["td2"]["cmap"],
-    "fname": "SPF_H_221_HTGL",
-    "vertical": 2 * units.meters,
-    "units": "g/kg",
-}
-fieldinfo["shlev1"] = {
-    "levels": [0.5, 1, 2, 4, 8, 12, 14, 16, 17, 18, 19, 20, 21, 22, 23, 24],
-    "cmap": fieldinfo["td2"]["cmap"],
-    "fname": "SPF_H_221_HYBL",
-    "vertical": "lowest model level",
-    "units": "g/kg",
-}
-fieldinfo["shr10m_30m"] = fieldinfo["speed10m"].copy()
-# shrlev1_trop = wind shear between tropopause and lowest model level
-for bot, top in itertools.permutations(
-    levs, 2
-):  # create shear fieldinfo entry for every permutation of levels
-    shr = f"shr{bot.m}{bot.units:~}_{top.m}{top.units:~}"
-    fieldinfo[shr] = fieldinfo["shr10m_30m"].copy()
-    fieldinfo[shr]["vertical"] = [bot, top]
-fieldinfo["shrtrop"] = {
-    "levels": np.array([2, 5, 10, 15, 20, 30, 50]) * 1e-3,
-    "cmap": fieldinfo["speed700"]["cmap"],
-    "fname": "VWSH_221_TRO",
-    "vertical": "tropopause",
-}  # shear at tropopause. https://www.emc.ncep.noaa.gov/mmb/rreanl/faq.html
-fieldinfo["srh"] = fieldinfo["srh1"].copy()
-fieldinfo["srh"]["levels"].extend([750])
-fieldinfo["srh"]["cmap"].extend(readNCLcm("wind_17lev")[-6:-4])
-fieldinfo["srh"]["fname"] = "HLCY_221_HTGY"
-fieldinfo["surface_height"] = fieldinfo["sbcape"].copy()
-fieldinfo["surface_height"]["fname"] = "HGT_221_SFC"
-fieldinfo["t2"]["fname"] = "TMP_221_SFC"
-fieldinfo["t2"]["units"] = "degF"
-fieldinfo["tctp"] = fieldinfo["stp"].copy()
-fieldinfo["tctp"]["levels"] = [
-    2 * x for x in fieldinfo["tctp"]["levels"]
-]  # can't multiply list by 2. List repeats itself instead of multiplying elements by 2.
-fieldinfo["tctp2014"] = fieldinfo["tctp"].copy()
+
+# Theta / Potential Temp
 thcmap = ["#eeeeee", "#dddddd", "#cccccc", "#aaaaaa"] + readNCLcm("precip2_17lev")[3:-1]
-fieldinfo["thetasfc"] = {
-    "levels": np.arange(290, 320, 2),
-    "cmap": thcmap,
-    "fname": "POT_221_SFC",
-}
-fieldinfo["theta2"] = {
-    "levels": np.arange(294, 313, 1),
-    "cmap": thcmap,
-    "fname": ["PRES_221_HTGL", "TMP_221_HTGL"],
-    "vertical": 2 * units.meters,
-}
-fieldinfo["thetae2"] = {
-    "levels": np.arange(321, 375, 3),
-    "cmap": thcmap,
-    "fname": ["PRES_221_HTGL", "TMP_221_HTGL", "DPT_221_HTGL"],
-    "vertical": 2 * units.meters,
-}
-fieldinfo["vvellev1"] = fieldinfo["vvel700hPa"].copy()
+fieldinfo["thetasfc"].update(
+    {"levels": np.arange(290, 320, 2), "cmap": thcmap, "fname": "POT_221_SFC"}
+)
+fieldinfo["theta2"].update(
+    {
+        "levels": np.arange(294, 313, 1),
+        "cmap": thcmap,
+        "fname": ["PRES_221_HTGL", "TMP_221_HTGL"],
+        "vertical": 2 * units.meters,
+    }
+)
+fieldinfo["thetae2"].update(
+    {
+        "levels": np.arange(321, 375, 3),
+        "cmap": thcmap,
+        "fname": ["PRES_221_HTGL", "TMP_221_HTGL", "DPT_221_HTGL"],
+        "vertical": 2 * units.meters,
+    }
+)
+
+# Copy-Link Fields (Level Specific)
+fieldinfo["rh_0deg"].update(fieldinfo["rh700"])  # defaultdict handles existence
+fieldinfo["rh_0deg"].update({"fname": "R_H_221_0DEG", "vertical": "freezing level"})
+
+fieldinfo["rh2"].update(fieldinfo["rh700hPa"])
+fieldinfo["rh2"].update({"fname": "R_H_221_HTGL", "vertical": 2 * units.meters})
+
+fieldinfo["rhlev1"].update(fieldinfo["rh700hPa"])
+fieldinfo["rhlev1"].update({"fname": "R_H_221_HYBL", "vertical": "lowest model level"})
+
+fieldinfo["vvellev1"].update(fieldinfo["vvel700hPa"])
 fieldinfo["vvellev1"]["fname"] = "V_VEL_221_HYBL"
-fieldinfo["wvflux"] = dict(
-    fname=["WVUFLX_221_ISBY_acc3h", "WVVFLX_221_ISBY_acc3h"], cmap=[], levels=[]
-)
-fieldinfo["wvflux"]["sel"] = fieldinfo["wvflux"]["fname"]
-fieldinfo["wvfluxconv"] = {
-    "fname": "WVCONV_221_ISBY_acc3h",
-    "levels": np.array(fieldinfo["precip"]["levels"]) * 10,
-    "cmap": readNCLcm("prcp_1"),
+
+# Specific Humidity 2m / Level 1
+sh_lvl_cfg = {
+    "levels": [0.5, 1, 2, 4, 8, 12, 14, 16, 17, 18, 19, 20, 21, 22, 23, 24],
+    "cmap": fieldinfo["td2"]["cmap"],
+    "units": "g/kg",
 }
-fieldinfo["wcflux"] = dict(
-    fname=["WCUFLX_221_ISBY_acc3h", "WCVFLX_221_ISBY_acc3h"], cmap=[], levels=[]
+fieldinfo["sh2"].update(sh_lvl_cfg)
+fieldinfo["sh2"].update({"fname": "SPF_H_221_HTGL", "vertical": 2 * units.meters})
+fieldinfo["shlev1"].update(sh_lvl_cfg)
+fieldinfo["shlev1"].update(
+    {"fname": "SPF_H_221_HYBL", "vertical": "lowest model level"}
 )
-fieldinfo["wcflux"]["sel"] = fieldinfo["wcflux"]["fname"]
-fieldinfo["wcfluxconv"] = {
-    "fname": "WCCONV_221_ISBY_acc3h",
-    "levels": np.array(fieldinfo["precip"]["levels"]) * 2,
-    "cmap": readNCLcm("prcp_1"),
-}
+
+# Convective Indices
+fieldinfo["scp"].update(fieldinfo["stp"])
+fieldinfo["tctp"].update(fieldinfo["stp"])
+fieldinfo["tctp"]["levels"] = [2 * x for x in fieldinfo["tctp"].get("levels", [])]
+fieldinfo["tctp2014"].update(fieldinfo["tctp"])
+
+# --- 4. SHEAR, SRH & FLUXES ---
+base_shear = fieldinfo.get("speed10m", {}).copy()
+for bot, top in itertools.permutations(levs, 2):
+    shr = f"shr{bot.m}{bot.units:~}_{top.m}{top.units:~}"
+    fieldinfo[shr] = base_shear.copy()
+    fieldinfo[shr]["vertical"] = [bot, top]
+
+fieldinfo["shrtrop"]["cmap"] = fieldinfo.get("speed700", {}).get("cmap")
+
+fieldinfo["srh"].update(fieldinfo.get("srh1", {}))
+fieldinfo["srh"].update(
+    {
+        "fname": "HLCY_221_HTGY",
+        "levels": list(fieldinfo["srh"].get("levels", [])) + [750],
+        "cmap": list(fieldinfo["srh"].get("cmap", [])) + readNCLcm("wind_17lev")[-6:-4],
+    }
+)
+
+# Fluxes
+for flux in ["wvflux", "wcflux"]:
+    prefix = "WV" if flux == "wvflux" else "WC"
+    fieldinfo[flux].update(
+        {
+            "fname": [f"{prefix}UFLX_221_ISBY_acc3h", f"{prefix}VFLX_221_ISBY_acc3h"],
+            "cmap": [],
+            "levels": [],
+        }
+    )
+    fieldinfo[flux]["sel"] = fieldinfo[flux]["fname"]
+
+fieldinfo["wvfluxconv"].update(
+    {
+        "fname": "WVCONV_221_ISBY_acc3h",
+        "levels": np.array(fieldinfo["precip"]["levels"]) * 10,
+        "cmap": readNCLcm("prcp_1"),
+    }
+)
+fieldinfo["wcfluxconv"].update(
+    {
+        "fname": "WCCONV_221_ISBY_acc3h",
+        "levels": np.array(fieldinfo["precip"]["levels"]) * 2,
+        "cmap": readNCLcm("prcp_1"),
+    }
+)
 
 
 #######################################################################
-idir = "/glade/collections/rda/data/ds608.0/3HRLY/"  # path to NARR
+idir = Path("/glade/campaign/collections/rda/data/d608000/3HRLY")  # path to NARR
 #######################################################################
 
 # apply this to rename_dims to avoid UserWarning: Horizonal dim numbers not found...Defaulting to (..., Y, X) order.
@@ -303,11 +314,12 @@ dims_dict = dict(
 def get_fixed(fieldname):
     narr = narrFixed
     targetdir = os.path.dirname(narr)
+    os.makedirs(targetdir, exist_ok=True)
     # Convert to netCDF if netCDF file doesn't exist.
-    if not os.path.exists(narr):
-        narr_grb = "/glade/collections/rda/data/ds608.0/FIXED/rr-fixed.grb"
+    if not narr.exists():
+        narr_grb = idir.parent / "FIXED/rr-fixed.grb"
         call_args = ["ncl_convert2nc", narr_grb, "-e", "grb", "-o", targetdir]
-        logging.info(call_args)
+        logging.warning(call_args)
         subprocess.check_call(call_args)
 
     nc = xarray.open_dataset(narr)
@@ -343,13 +355,11 @@ def get(valid_time, targetdir=targetdir, narrtype=narr3D):
         narr_grb, ext = os.path.splitext(narr)  # drop '.nc' suffix
         # Extract NARR grib file from tar file if it doesn't exist.
         if not os.path.exists(narr_grb):
-            search_str = (
-                idir + valid_time.strftime("%Y/NARR" + vartype + "_%Y%m_") + "*.tar"
-            )
+            search_str = valid_time.strftime("%Y/NARR" + vartype + "_%Y%m_") + "*.tar"
             logging.debug(f"narr.get(): search_str={search_str}")
-            narrtars = glob.glob(search_str)
+            narrtars = idir.glob(search_str)
             for n in narrtars:
-                prefix, yyyymm, dddd = n.split("_")
+                prefix, yyyymm, dddd = str(n).split("_")
                 dd1 = datetime.datetime.strptime(yyyymm + dddd[0:2], "%Y%m%d")
                 # NARR3D_201704_0103.tar starts on 1st at 0Z and ends just before 4th at 0Z. so add one to eday
                 dd2 = datetime.datetime.strptime(
@@ -428,7 +438,7 @@ def temporal(data, info):
 
 
 def vertical(data, info):
-    logging.debug(f"narr.vertical(): data {data.name} info {info}")
+    logging.debug(f"narr.vertical(): data {data} info {info}")
 
     if "verttitle" in data.attrs:
         return data
@@ -450,13 +460,13 @@ def vertical(data, info):
                 data = data.metpy.sel(vertical=vlevel)
             else:
                 logging.debug(
-                    f"narr.vertical(): {data.name} {vertical.name} not in {data.dims}. assuming vertical has already had its way"
+                    f"narr.vertical(): {data} {vertical.name} not in {data.dims}. assuming vertical has already had its way"
                 )
             verttitle = str(vlevel)
         elif (
             len(data.dims) <= 2
         ):  # If data has only 2 dimensions assume it has no vertical dimension (like tropopause-level, or max-wind-level)
-            logging.debug(f"narr.vertical(): {data.name} is 2D already.")
+            logging.debug(f"narr.vertical(): {data} is 2D already.")
             logging.debug(f"narr.vertical(): setting verttitle={vlevel}")
             data.attrs["verttitle"] = vlevel
             return data
@@ -673,6 +683,13 @@ def scalardata(field: str, valid_time: datetime.datetime, targetdir: str = targe
         v = data[info["fname"][1]]
         data = mcalc.wind_speed(u, v)
         data.attrs["long_name"] = "wind speed"
+    elif field == "bunkers":
+        # get units from 1st DataArray
+        units = data[list(data.data_vars)[0]].units
+        data = data.to_array(dim="uv", name=field)
+        data.attrs["verttitle"] = info["vertical"]
+        data.attrs["long_name"] = "Bunkers Storm Motion"
+        data.attrs.update(units=units)
     elif field.startswith("div") or field.startswith("vort"):
         # TODO: why don't mcalc.div and vort work with vertical dimension? Have to sel a single level before calling them.
         u = data[info["fname"][0]]
@@ -858,6 +875,9 @@ def vectordata(field, valid_time, targetdir=targetdir):
         )  # shear() doesn't copy over attributes like scalardata does
         uv.attrs.update(u.attrs)
     elif field.endswith("flux"):
+        uv = scalardata(field, valid_time, targetdir=targetdir)
+    elif "fname" in info and isinstance(info["fname"], (list, tuple)):
+        # handles 'bunkers'
         uv = scalardata(field, valid_time, targetdir=targetdir)
     else:
         uname = fstr("u", info["vertical"])
