@@ -4,8 +4,6 @@ import logging
 import os
 import subprocess
 import tarfile
-from collections import defaultdict
-from functools import lru_cache
 from pathlib import Path
 
 import cartopy.crs as ccrs
@@ -14,6 +12,7 @@ import metpy.calc as mcalc
 import numpy as np
 import pytz
 import xarray as xr
+from ahijevyc.fieldinfo import fieldinfo, readNCLcm
 from metpy.units import units
 
 # --- 1. CONFIGURATION & CONSTANTS ---
@@ -42,32 +41,6 @@ class NarrConfig:
 
     # Dimension renaming for consistency
     DIMS_MAP = dict(gridx_221="y", gridy_221="x")
-
-
-# --- 2. COLORMAP & FIELDINFO UTILITIES ---
-
-
-@lru_cache(maxsize=None)
-def readNCLcm(name):
-    """
-    Reads NCL colormap. Cached to prevent repetitive I/O.
-    Returns None if name is invalid to prevent crashes.
-    """
-    if not name:
-        return None
-
-    # Check common locations or env var
-    root = os.getenv("NCARG_ROOT", "/glade/u/apps/opt/ncl/6.5.0/intel/17.0.1")
-    path = Path(root) / f"lib/ncarg/colormaps/{name}.rgb"
-
-    try:
-        rgb = np.loadtxt(path, comments=[";", "#", "n"])
-        if rgb.max() > 1:
-            rgb = rgb / 255.0
-        return rgb.tolist()
-    except Exception as e:
-        logging.warning(f"Could not load colormap '{name}': {e}")
-        return []
 
 
 def resolve_cmap(info):
@@ -105,12 +78,11 @@ def fstr(f, lev):
     return f"{f}{lev:~}".replace(" ", "")
 
 
-def setup_fieldinfo():
+def setup_fieldinfo(fieldinfo):
     """
     Builds the fieldinfo dictionary.
     Uses a template factory approach for maintainability.
     """
-    fieldinfo = defaultdict(dict)
 
     # Define vertical levels
     levs = [lev * units.meters for lev in [10, 30, 1000, 1500, 3000, 5000, 6000]]
@@ -457,7 +429,7 @@ def setup_fieldinfo():
 
 
 # Initialize Fieldinfo (Fast because of lazy loading)
-fieldinfo = setup_fieldinfo()
+fieldinfo = setup_fieldinfo(fieldinfo)
 
 # --- 3. I/O HANDLERS ---
 
