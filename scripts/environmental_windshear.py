@@ -4,7 +4,7 @@ import logging
 import metpy
 from metpy.units import units
 import narr
-import ncl
+from ahijevyc import ncl
 import numpy as np
 import os
 import pandas as pd
