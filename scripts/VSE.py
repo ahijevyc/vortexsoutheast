@@ -1,8 +1,9 @@
 import glob
-from metpy.units import units
 import os
 from pathlib import Path
+
 import spc
+from metpy.units import units
 
 
 def composites():

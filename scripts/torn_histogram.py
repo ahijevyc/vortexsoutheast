@@ -1,15 +1,16 @@
 import argparse
 import datetime
-import ibtracs
 import logging
+import os
+
+import ibtracs
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 import pandas as pd
-from pandas.api.types import CategoricalDtype
 import seaborn as sns
-from ahijevyc import spc
 import VSE
+from ahijevyc import spc
+from pandas.api.types import CategoricalDtype
 
 sns.set_theme()
 

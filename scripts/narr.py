@@ -2,21 +2,21 @@ import datetime
 import itertools
 import logging
 import os
-from pathlib import Path
+import subprocess
 import sys
+import tarfile
+from pathlib import Path
 
 import cartopy
-from fieldinfo import fieldinfo, readNCLcm
-import matplotlib.pyplot as plt
 import matplotlib.colors as colors
-from metpy.units import units
+import matplotlib.pyplot as plt
 import metpy.calc as mcalc
 import numpy as np
 import pytz
-from ahijevyc import spc
-import subprocess
-import tarfile
 import xarray
+from ahijevyc import spc
+from fieldinfo import fieldinfo, readNCLcm
+from metpy.units import units
 
 # (vartype, file_suffix)
 narrSfc = ("sfc", "RS.sfc")

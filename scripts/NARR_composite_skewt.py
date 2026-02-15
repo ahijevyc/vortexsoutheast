@@ -1,19 +1,22 @@
 import argparse
 import datetime
 import logging
+import os
+
 import matplotlib.pyplot as plt
+import metpy.calc as mpcalc
+import numpy as np
+import VSE
+import xarray
 from metpy.interpolate import interpolate_1d
 from metpy.plots import (
     Hodograph,
     SkewT,
-)  # SkewT segfaults when outside of base conda env on casper
+)
+
+# SkewT segfaults when outside of base conda env on casper
 from metpy.units import units
-import metpy.calc as mpcalc
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-import numpy as np
-import os
-import VSE
-import xarray
 
 
 def main():

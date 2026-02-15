@@ -7,27 +7,28 @@ Instead, convert to netCDF with ncl_convert2nc.
 
 """
 
-import matplotlib.pyplot as plt
-import matplotlib.colors as colors
 import argparse
-import atcf
-from collections import defaultdict
 import datetime
-import ibtracs
 import logging
-from metpy.units import units
-import numpy as np
+import os
+import pdb
+import sys
+from collections import defaultdict
+
+import atcf
+import ibtracs
+import matplotlib.colors as colors
+import matplotlib.pyplot as plt
 import narr  # fieldinfo levels and color tables and narr.get()
 import ncl
-import os
+import numpy as np
 import pandas as pd  # for forward fill of NaNs
-import pdb
 import pytz
+import xarray
+from ahijevyc import spc
+from metpy.units import units
 from scipy import spatial
 from scipy.stats import gaussian_kde
-from ahijevyc import spc
-import sys
-import xarray
 
 
 def coord_stack(d):

@@ -1,13 +1,14 @@
 import argparse
 import datetime
 import logging
-import matplotlib.pyplot as plt
-from metpy.calc import wind_speed
 import os
 from pathlib import Path
+
+import matplotlib.pyplot as plt
 import seaborn as sns
 import VSE
 import xarray
+from metpy.calc import wind_speed
 
 parser = argparse.ArgumentParser(
     description="line plot of output from NARR_composite.py",

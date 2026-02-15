@@ -1,16 +1,17 @@
 import argparse
-import atcf
-import cartopy
-from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
-import gridlines
-import ibtracs
 import itertools
 import logging
-import matplotlib.pyplot as plt
 import os
+
+import atcf
+import cartopy
+import gridlines
+import ibtracs
+import matplotlib.pyplot as plt
 import pandas as pd
-from ahijevyc import spc
 import VSE
+from ahijevyc import spc
+from cartopy.mpl.gridliner import LATITUDE_FORMATTER, LONGITUDE_FORMATTER
 
 # =============Arguments===================
 parser = argparse.ArgumentParser(
