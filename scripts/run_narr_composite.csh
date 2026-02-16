@@ -1,14 +1,12 @@
 #!/bin/csh
 
-conda activate
-
 # Composite NARR for many fields, times, and storms
 # meant to be run 3 times
 # 1) time_window_hours=6,  anchor_hour=0
 # 2) time_window_hours=12, anchor_hour=3
 # 3) time_window_hours=24, anchor_hour=0
 
-set repo=/glade/scratch/ahijevyc/vortexsoutheast
+set repo=$SCRATCH/vortexsoutheast
 
 # Storm and time lists written to this directory
 set stormlistdir=$repo/stormtimelist
@@ -98,12 +96,11 @@ foreach filllinebarb (`cat $repo/scripts/filllinebarb.txt` `cat $CM1`)
 #PBS -l walltime=${walltime}:00:00
 #PBS -l select=1:ncpus=1:mem=5GB
 
-setenv TMPDIR /glade/scratch/$USER/temp
-mkdir -p $TMPDIR
-
 module reset
 module load ncl
-conda activate
+module load conda
+conda activate vse
+
 END
         foreach category (../categories/*.txt)
             set desc=`basename $category txt`

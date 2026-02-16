@@ -20,12 +20,11 @@ import ibtracs
 import matplotlib.colors as colors
 import matplotlib.pyplot as plt
 import narr  # fieldinfo levels and color tables and narr.get()
-import ncl
 import numpy as np
 import pandas as pd  # for forward fill of NaNs
 import pytz
 import xarray
-from ahijevyc import spc
+from ahijevyc import ncl, spc
 from metpy.units import units
 from scipy import spatial
 from scipy.stats import gaussian_kde
