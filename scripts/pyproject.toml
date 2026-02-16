@@ -3,4 +3,4 @@ name = "narr"
 version = "0.1"
 
 [tool.setuptools]
-py-modules = ["narr", "VSE"]
+py-modules = ["narr", "utils", "VSE"]
